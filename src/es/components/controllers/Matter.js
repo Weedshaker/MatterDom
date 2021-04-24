@@ -9,10 +9,10 @@ import { Shadow } from '../prototypes/Shadow.js'
  * https://brm.io/matter-js/docs/
  *
  * @export
- * @class MatterDom
+ * @class Matter
  * @type {CustomElementConstructor}
  */
-export default class MatterDom extends Shadow() {
+export default class Matter extends Shadow() {
   connectedCallback () {
     this.getMatter().then(Matter => {
       const engine = Matter.Engine.create()

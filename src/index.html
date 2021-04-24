@@ -7,7 +7,7 @@
   <title>Matter Dom - Initial Test</title>
 </head>
 <body>
-  <c-matter-dom></c-matter-dom>
+  <c-matter></c-matter>
   <div id="box"></div>
   <div id="ground"></div>
   <style>
@@ -34,7 +34,7 @@
   <script rel=preload type=module>
     Promise.all([
       // Helpers
-      import('./es/components/controllers/MatterDom.js').then(module => ['c-matter-dom', module.default])
+      import('./es/components/controllers/Matter.js').then(module => ['c-matter', module.default])
     ]).then(elements => elements.forEach(element => {
       // don't define already existing customElements
       if (element && !customElements.get(element[0])) customElements.define(...element)
