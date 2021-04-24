@@ -1,0 +1,16 @@
+{
+    "name": "MatterDom",
+    "version": "0.0.1",
+    "description": "Use Matter.js Physics Engine in the DOM with Web Components in an Event Driven Architecture",
+    "main": "./index.html",
+    "scripts": {
+        "fix": "standard --fix",
+        "serve": "live-server --port=4200 --host=localhost"
+    },
+    "author": "weedshaker@gmail.com",
+    "license": " GPL-3.0 License",
+    "devDependencies": {
+        "live-server": "*",
+        "standard": "*"
+    }
+}
