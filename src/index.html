@@ -9,23 +9,17 @@
 <body>
   <c-matter>
     <c-time></c-time>
+    <b-rectangle></b-rectangle>
   </c-matter>
-  <div id="box"></div>
   <div id="ground"></div>
   <style>
-    #box {
-      position: absolute;
-      background: #111;
-      height: 40px;
-      width: 40px;
-      cursor: move;
-    }
     #ground {
       position: absolute;
       background: #666;
       top: 140px;
+      left: -100px;
       height: 120px;
-      width: 400px;
+      width: 450px;
     }
     html, body {
       position: relative;
@@ -37,7 +31,8 @@
     Promise.all([
       // Helpers
       import('./es/components/controllers/Matter.js').then(module => ['c-matter', module.default]),
-      import('./es/components/controllers/Time.js').then(module => ['c-time', module.default])
+      import('./es/components/controllers/Time.js').then(module => ['c-time', module.default]),
+      import('./es/components/bodies/Rectangle.js').then(module => ['b-rectangle', module.default]),
     ]).then(elements => elements.forEach(element => {
       // don't define already existing customElements
       if (element && !customElements.get(element[0])) customElements.define(...element)

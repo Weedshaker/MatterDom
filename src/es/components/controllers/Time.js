@@ -1,5 +1,4 @@
 // @ts-check
-import { Shadow } from '../prototypes/Shadow.js'
 
 /* global requestAnimationFrame */
 /* global self */
@@ -11,7 +10,7 @@ import { Shadow } from '../prototypes/Shadow.js'
  * @class Time
  * @type {CustomElementConstructor}
  */
-export default class Time extends Shadow() {
+export default class Time extends HTMLElement {
   connectedCallback () {
     this.addEventListenerRequestAnimationFrame(time => this.dispatchEvent(new CustomEvent(this.getAttribute('time') || 'time', {
       detail: { time },
