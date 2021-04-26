@@ -27,12 +27,12 @@ export default class Matter extends Shadow() {
       )
       // TODO: allow selectors to add none static elements to Bodies
       const mouseConstraint = Matter.MouseConstraint.create(this.engine, { element: document.body })
-      Matter.Composite.add(this.engine.world, [ground, mouseConstraint]);
+      Matter.Composite.add(this.engine.world, [ground, mouseConstraint])
     })
 
     // this event listener can only be added once the loadDependency and its internal requirements were initialzed
     this.timeEventListener = event => {
-      if (!!event.detail.time) {
+      if (event.detail.time) {
         this.bodies.forEach((matterBody, domBody) => {
           this.css = ''
           // TODO: read the width dynamically out or set anchor to top left
@@ -47,17 +47,19 @@ export default class Matter extends Shadow() {
     }
     this.addBodyEventListener = event => {
       let domBody = null
-      if (event && event.detail && (domBody = event.detail.body)) this.loadDependency().then(Matter => {
-        const bodyBoundingClientRect = event.detail.body.getBoundingClientRect()
-        const matterBody = Matter.Bodies.rectangle(
-          bodyBoundingClientRect.x,
-          bodyBoundingClientRect.y,
-          bodyBoundingClientRect.width,
-          bodyBoundingClientRect.height
-        )
-        Matter.Composite.add(this.engine.world, matterBody)
-        this.bodies.set(domBody, matterBody)
-      })
+      if (event && event.detail && (domBody = event.detail.body)) {
+        this.loadDependency().then(Matter => {
+          const bodyBoundingClientRect = event.detail.body.getBoundingClientRect()
+          const matterBody = Matter.Bodies.rectangle(
+            bodyBoundingClientRect.x,
+            bodyBoundingClientRect.y,
+            bodyBoundingClientRect.width,
+            bodyBoundingClientRect.height
+          )
+          Matter.Composite.add(this.engine.world, matterBody)
+          this.bodies.set(domBody, matterBody)
+        })
+      }
     }
   }
 

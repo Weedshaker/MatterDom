@@ -14,14 +14,15 @@ import { Shadow } from './Shadow.js'
  * @return {CustomElementConstructor | *}
  */
 export const Shape = (ChosenClass = Shadow()) => class Shape extends ChosenClass {
-  constructor(...args) {
+  constructor (...args) {
     super(...args)
 
     if (!this.hasAttribute('namespace')) {
       this.setAttribute('namespace', (this.namespace = this.uniqueId + '-'))
     }
   }
-  get uniqueId() {
+
+  get uniqueId () {
     return this._uniqueId || (this._uniqueId = self.crypto.getRandomValues(new Uint32Array(3)).join(''))
   }
 }

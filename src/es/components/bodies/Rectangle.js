@@ -1,6 +1,8 @@
 // @ts-check
 import { Shape } from '../prototypes/Shape.js'
 
+/* global CustomEvent */
+
 /***
 * Matter.Bodies.rectangle(x, y, width, height, [options])
 * https://brm.io/matter-js/docs/classes/Bodies.html
@@ -22,7 +24,7 @@ export default class Rectangle extends Shape() {
       composed: true
     }))
   }
-  
+
   disconnectedCallback () {
     this.dispatchEvent(new CustomEvent(this.getAttribute('remove-body') || 'remove-body', {
       bubbles: true,
@@ -30,7 +32,7 @@ export default class Rectangle extends Shape() {
       composed: true
     }))
   }
-  
+
   /**
   * evaluates if a render is necessary
   *
@@ -39,7 +41,7 @@ export default class Rectangle extends Shape() {
   shouldComponentRenderCSS () {
     return !this.root.querySelector('style[_css]')
   }
-  
+
   /**
   * renders the css
   *

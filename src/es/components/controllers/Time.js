@@ -1,6 +1,7 @@
 // @ts-check
 
-/* global requestAnimationFrame */
+/* global CustomEvent */
+/* global HTMLElement */
 /* global self */
 
 /***
@@ -19,9 +20,11 @@ export default class Time extends HTMLElement {
       composed: true
     })), null, true)
   }
+
   disconnectedCallback () {
     this.removeEventListenerRequestAnimationFrame()
   }
+
   /**
    * subscribe to requestAnimationFrame callback by recursive loop
    *
@@ -34,6 +37,7 @@ export default class Time extends HTMLElement {
     func(time)
     if (this._isRunning) self.requestAnimationFrame(time => this.addEventListenerRequestAnimationFrame(func, time))
   }
+
   removeEventListenerRequestAnimationFrame () {
     this._isRunning = false
   }
