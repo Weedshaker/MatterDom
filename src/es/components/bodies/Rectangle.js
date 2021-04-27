@@ -13,11 +13,20 @@ import { Shape } from '../prototypes/Shape.js'
 * @type {CustomElementConstructor}
 */
 export default class Rectangle extends Shape() {
+  constructor (...args) {
+    super(...args)
+
+    this.body = new Promise(resolve => this.resolveBody = resolve)
+    // TODO: write its original coordinates to itself
+  }
+
   connectedCallback () {
     if (this.shouldComponentRenderCSS()) this.renderCSS()
+    // the dispatch must be after rendering
     this.dispatchEvent(new CustomEvent(this.getAttribute('add-body') || 'add-body', {
       detail: {
-        body: this
+        webComponent: this,
+        resolveBody: this.resolveBody
       },
       bubbles: true,
       cancelable: true,
