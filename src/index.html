@@ -9,7 +9,7 @@
 <body>
   <c-matter>
     <c-time></c-time>
-    <b-rectangle></b-rectangle>
+    <b-rectangle x=60 y=50 width=80></b-rectangle>
   </c-matter>
   <div id="ground"></div>
   <style>
@@ -21,10 +21,8 @@
       height: 120px;
       width: 450px;
     }
-    html, body {
-      position: relative;
-      height: 100%;
-      margin: 0;
+    body {
+      min-height: 100vh;
     }
   </style>
   <script rel=preload type=module>

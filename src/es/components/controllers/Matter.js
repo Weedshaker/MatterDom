@@ -14,8 +14,6 @@ import { Shadow } from '../prototypes/Shadow.js'
 export default class Matter extends Shadow() {
   constructor () {
     super()
-
-    this.bodies = new Map() // TODO: drop this and simply loop over engine bodies
     
     this.matterEnginePromise = this.loadDependency().then(Matter => {
       const engine = Matter.Engine.create()
@@ -24,7 +22,7 @@ export default class Matter extends Shadow() {
       Matter.Events.on(engine, "afterUpdate", () => this.canUpdate = true)
       // TODO: make whole DOM top, left border
       const ground = Matter.Bodies.rectangle(
-        100, 200, 500, 120, { isStatic: true }
+        100, 200, 500, 120, { isStatic: true } // TODO: load this dynamically with option to set static rectangles
       )
       // TODO: allow selectors to add none static elements to Bodies
       const mouseConstraint = Matter.MouseConstraint.create(engine, { element: document.body })
@@ -35,14 +33,15 @@ export default class Matter extends Shadow() {
     this.timeEventListener = event => {
       if (event.detail.time && this.canUpdate) {
         this.matterEnginePromise.then(([Matter, engine]) => {
-          this.bodies.forEach((matterBody, domBody) => {
-            this.css = ''
-            // TODO: read the width dynamically out or set anchor to top left
-            this.css = /* css */`
-              :host {
-                --${domBody.getAttribute('namespace')}transform: translate(${matterBody.position.x - 20}px, ${matterBody.position.y - 20}px) rotate(${matterBody.angle}rad);
-              }
-            `
+          engine.world.bodies.forEach(body => {
+            if (body.webComponent) {
+              this.css = ''
+              this.css = /* css */`
+                :host {
+                  --${body.webComponent.getAttribute('namespace')}transform: translate(${body.position.x - body.webComponent.getAttribute('half-width')}px, ${body.position.y - body.webComponent.getAttribute('half-height')}px) rotate(${body.angle}rad);
+                }
+              `
+            }
           })
           Matter.Engine.update(engine)
         })
@@ -54,16 +53,15 @@ export default class Matter extends Shadow() {
       let resolveBody = null
       if (event && event.detail && (webComponent = event.detail.webComponent) && (resolveBody = event.detail.resolveBody)) {
         this.matterEnginePromise.then(([Matter, engine]) => {
-          const bodyBoundingClientRect = event.detail.webComponent.getBoundingClientRect()
           const body = Matter.Bodies.rectangle(
-            bodyBoundingClientRect.x,
-            bodyBoundingClientRect.y,
-            bodyBoundingClientRect.width,
-            bodyBoundingClientRect.height
-          ) // TODO: write the webComponent as extra argument onto body
+            Number(webComponent.getAttribute('x')),
+            Number(webComponent.getAttribute('y')),
+            Number(webComponent.getAttribute('width')),
+            Number(webComponent.getAttribute('height')),
+            {webComponent}
+          )
           Matter.Composite.add(engine.world, body)
           resolveBody(body)
-          this.bodies.set(webComponent, body)
         })
       }
     }

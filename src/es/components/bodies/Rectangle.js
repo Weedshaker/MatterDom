@@ -17,11 +17,11 @@ export default class Rectangle extends Shape() {
     super(...args)
 
     this.body = new Promise(resolve => this.resolveBody = resolve)
-    // TODO: write its original coordinates to itself
   }
 
   connectedCallback () {
     if (this.shouldComponentRenderCSS()) this.renderCSS()
+    this.copyPropertiesToAttributes()
     // the dispatch must be after rendering
     this.dispatchEvent(new CustomEvent(this.getAttribute('add-body') || 'add-body', {
       detail: {
@@ -36,6 +36,9 @@ export default class Rectangle extends Shape() {
 
   disconnectedCallback () {
     this.dispatchEvent(new CustomEvent(this.getAttribute('remove-body') || 'remove-body', {
+      detail: {
+        webComponent: this,
+      },
       bubbles: true,
       cancelable: true,
       composed: true
@@ -60,13 +63,23 @@ export default class Rectangle extends Shape() {
     // TODO: make all dynamic
     this.css = /* css */`
       :host {
-        position: absolute;
-        background: #111;
-        height: 40px;
-        width: 40px;
-        cursor: move;
+        background: var(--background, #111);
+        cursor: var(--cursor, move);
+        height: ${this.getAttribute('height') ? this.getAttribute('height') + 'px' : '50px'};
+        position: var(--position, fixed);
         transform: var(--transform);
+        width: ${this.getAttribute('width') ? this.getAttribute('width') + 'px' : '50px'};
       }
     `
+  }
+
+  copyPropertiesToAttributes () {
+    const bodyBoundingClientRect = this.getBoundingClientRect()
+    if (!this.hasAttribute('x')) this.setAttribute('x', bodyBoundingClientRect.x)
+    if (!this.hasAttribute('y')) this.setAttribute('y', bodyBoundingClientRect.y)
+    if (!this.hasAttribute('width')) this.setAttribute('width', bodyBoundingClientRect.width)
+    if (!this.hasAttribute('height')) this.setAttribute('height', bodyBoundingClientRect.height)
+    this.setAttribute('half-width', this.getAttribute('width') / 2)
+    this.setAttribute('half-height', this.getAttribute('height') / 2)
   }
 }

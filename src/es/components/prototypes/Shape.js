@@ -23,6 +23,6 @@ export const Shape = (ChosenClass = Shadow()) => class Shape extends ChosenClass
   }
 
   get uniqueId () {
-    return this._uniqueId || (this._uniqueId = self.crypto.getRandomValues(new Uint32Array(3)).join(''))
+    return this._uniqueId || (this._uniqueId = self.crypto.getRandomValues(new Uint32Array(1)).join(''))
   }
 }
