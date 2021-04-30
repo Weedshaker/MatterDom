@@ -13,12 +13,6 @@ import { Shape } from '../prototypes/Shape.js'
 * @type {CustomElementConstructor}
 */
 export default class Rectangle extends Shape() {
-  constructor (...args) {
-    super(...args)
-
-    this.body = new Promise(resolve => this.resolveBody = resolve)
-  }
-
   connectedCallback () {
     if (this.shouldComponentRenderCSS()) this.renderCSS()
     this.copyPropertiesToAttributes()
@@ -35,7 +29,8 @@ export default class Rectangle extends Shape() {
   }
 
   disconnectedCallback () {
-    this.dispatchEvent(new CustomEvent(this.getAttribute('remove-body') || 'remove-body', {
+    // must be dispatched from body, since this element dies before it can dispatch
+    document.body.dispatchEvent(new CustomEvent(this.getAttribute('remove-body') || 'remove-body', {
       detail: {
         webComponent: this,
       },
