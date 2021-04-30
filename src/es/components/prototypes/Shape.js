@@ -14,6 +14,7 @@ import { Shadow } from './Shadow.js'
  * @return {CustomElementConstructor | *}
  */
 export const Shape = (ChosenClass = Shadow()) => class Shape extends ChosenClass {
+  // TODO: attribute changed for isStatic functionality
   constructor (...args) {
     super(...args)
 

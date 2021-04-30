@@ -60,15 +60,14 @@ export default class Rectangle extends Shape() {
   * @return {void}
   */
   renderCSS () {
-    // TODO: make all dynamic
     this.css = /* css */`
       :host {
-        background: var(--background, #111);
-        cursor: var(--cursor, move);
-        height: ${this.getAttribute('height') ? this.getAttribute('height') + 'px' : '50px'};
-        position: var(--position, fixed);
+        background: ${this.getAttribute('background') ? this.getAttribute('background') : 'var(--background, #111)'};
+        cursor: ${this.getAttribute('cursor') ? this.getAttribute('cursor') : 'var(--cursor, move)'};
+        height: ${this.getAttribute('height') ? this.getAttribute('height') + 'px' : '5px'};
+        position: ${this.getAttribute('position') ? this.getAttribute('position') : 'var(--position, absolute)'};
         transform: var(--transform);
-        width: ${this.getAttribute('width') ? this.getAttribute('width') + 'px' : '50px'};
+        width: ${this.getAttribute('width') ? this.getAttribute('width') + 'px' : '5px'};
       }
     `
   }
