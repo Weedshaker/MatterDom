@@ -14,6 +14,7 @@ import { Shadow } from './Shadow.js'
  * @return {CustomElementConstructor | *}
  */
 export const Shape = (ChosenClass = Shadow()) => class Shape extends ChosenClass {
+  // TODO: Add mutation observer or an other mechanism to check bodyBoundingClientRect on the fly to adjust html/css changes realtime at matter
   static get observedAttributes () {
     return ['is-static', 'isStatic']
   }
@@ -21,7 +22,7 @@ export const Shape = (ChosenClass = Shadow()) => class Shape extends ChosenClass
   constructor (...args) {
     super(...args)
 
-    this.body = new Promise(resolve => this.resolveBody = resolve)
+    this.body = new Promise(resolve => (this.resolveBody = resolve))
     if (!this.hasAttribute('namespace')) {
       this.setAttribute('namespace', (this.namespace = this.uniqueId + '-'))
     }

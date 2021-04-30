@@ -32,7 +32,7 @@ export default class Rectangle extends Shape() {
     // must be dispatched from body, since this element dies before it can dispatch
     document.body.dispatchEvent(new CustomEvent(this.getAttribute('remove-body') || 'remove-body', {
       detail: {
-        webComponent: this,
+        webComponent: this
       },
       bubbles: true,
       cancelable: true,

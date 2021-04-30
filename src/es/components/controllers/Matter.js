@@ -15,7 +15,7 @@ export default class Matter extends Shadow() {
   // TODO: querySelectorAll function for dom none web components to be added to matter engine
   constructor () {
     super()
-    
+
     this.tickCounter = 0
     this.updateStaticByTick = 100
     this.createStaticCSSTag()
@@ -23,18 +23,24 @@ export default class Matter extends Shadow() {
     this.matterEnginePromise = this.loadDependency().then(Matter => {
       const engine = Matter.Engine.create()
       this.canUpdate = true
-      Matter.Events.on(engine, "beforeUpdate", () => this.canUpdate = false)
-      Matter.Events.on(engine, "afterUpdate", () => this.canUpdate = true)
+      Matter.Events.on(engine, 'beforeUpdate', () => (this.canUpdate = false))
+      Matter.Events.on(engine, 'afterUpdate', () => (this.canUpdate = true))
       const mouseConstraint = Matter.MouseConstraint.create(engine, { element: document.body }) // TODO: control mouseConstraints etc. at an other place
       Matter.Composite.add(engine.world, mouseConstraint)
       return [Matter, engine]
     })
-    
+
     this.timeEventListener = event => {
       if (event.detail.time && this.canUpdate) {
         this.tickCounter++
         this.matterEnginePromise.then(([Matter, engine]) => {
-          this.renderCSS(this.filterDynamicBodies(engine.world.bodies))
+          // this.renderCSS(this.filterDynamicBodies(engine.world.bodies)) // TODO: IPHONE IOS 13+ Bug does not update dom renderer when only changes on variables
+          // TODO: retest this workaround
+          engine.world.bodies.forEach(body => {
+            body.webComponent.style.top = `${body.position.y - body.webComponent.getAttribute('half-height')}px`
+            body.webComponent.style.left = `${body.position.x - body.webComponent.getAttribute('half-width')}px`
+            body.webComponent.style.transform = `rotate(${body.angle}rad)`
+          })
           if (this.tickCounter % this.updateStaticByTick === 0) this.renderStaticCSS(this.filterStaticBodies(engine.world.bodies))
           Matter.Engine.update(engine)
         })
@@ -159,7 +165,7 @@ export default class Matter extends Shadow() {
       Number(webComponent.getAttribute('y')) + Number(webComponent.getAttribute('height')) / 2, // matter.js will use the coordinates for center of body but here we do adjust for top/left
       Number(webComponent.getAttribute('width')),
       Number(webComponent.getAttribute('height')),
-      {webComponent}
+      { webComponent }
     ]
   }
 
