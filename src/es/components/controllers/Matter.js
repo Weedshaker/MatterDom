@@ -36,7 +36,7 @@ export default class Matter extends Shadow() {
         this.matterEnginePromise.then(([Matter, engine]) => {
           // this.renderCSS(this.filterDynamicBodies(engine.world.bodies)) // TODO: IPHONE IOS 13+ Bug does not update dom renderer when only changes on variables
           // TODO: retest this workaround
-          engine.world.bodies.forEach(body => {
+          this.filterDynamicBodies(engine.world.bodies).forEach(body => {
             body.webComponent.style.top = `${body.position.y - body.webComponent.getAttribute('half-height')}px`
             body.webComponent.style.left = `${body.position.x - body.webComponent.getAttribute('half-width')}px`
             body.webComponent.style.transform = `rotate(${body.angle}rad)`
