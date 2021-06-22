@@ -8,6 +8,7 @@
 </head>
 <body>
   <c-matter>
+    <c-ipfs></c-ipfs>
     <c-time></c-time>
     <b-rectangle x=50 y=0 width=50 height=50></b-rectangle>
     <b-rectangle x=10 y=500 width=800 height=50 background=darkblue is-static=true cursor=normal></b-rectangle>
@@ -23,6 +24,7 @@
       // Helpers
       import('./es/components/controllers/Matter.js').then(module => ['c-matter', module.default]),
       import('./es/components/controllers/Time.js').then(module => ['c-time', module.default]),
+      import('./es/components/controllers/Ipfs.js').then(module => ['c-ipfs', module.default]),
       import('./es/components/bodies/Rectangle.js').then(module => ['b-rectangle', module.default]),
     ]).then(elements => elements.forEach(element => {
       // don't define already existing customElements

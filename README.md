@@ -4,7 +4,6 @@ Use Matter.js Physics Engine in the DOM with Web Components in an Event Driven A
 
 ## TODO
 
-1. ipfs pubsub room for syncing https://www.youtube.com/watch?v=Nv_Teb--1zg
 1. time.js requestAnimationFrame best for getting time tick?
 1. Matter & Renderer FPS debug meassure and stop/go engine func + debug view overlay with default matter canvas
 1. querySelectorAll function for dom none web components to be added to matter engine
