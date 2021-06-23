@@ -8,7 +8,7 @@
  * https://www.youtube.com/watch?v=Nv_Teb--1zg
  * 
  * https://github.com/ipfs-shipyard/ipfs-pubsub-room
- * // troubles, continue... here first: https://github.com/ipfs-shipyard/ipfs-pubsub-room-demo
+ * // troubles, continue... here first: https://github.com/ipfs-shipyard/ipfs-pubsub-room-demo/issues/13
  * https://github.com/libp2p/research-pubsub
  * https://github.com/ipfs-shipyard/ipfs-pubsub-room
  * https://discuss.ipfs.io/t/pubsub-nodes-not-connecting-js-libp2p-webrtc-star/8617/4
