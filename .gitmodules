@@ -1,0 +1,3 @@
+[submodule "src/es/event-driven-web-components-yjs"]
+	path = src/es/event-driven-web-components-yjs
+	url = git@github.com:Weedshaker/event-driven-web-components-yjs.git
