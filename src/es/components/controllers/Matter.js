@@ -13,15 +13,17 @@ import { Shadow } from '../prototypes/Shadow.js'
  */
 export default class Matter extends Shadow() {
   // TODO: querySelectorAll function for dom none web components to be added to matter engine
-  constructor () {
-    super()
+  constructor (options = {}, ...args) {
+    super({ importMetaUrl: import.meta.url, tabindex: 'no-tabindex-style', ...options }, ...args)
 
     this.tickCounter = 0
     this.updateStaticByTick = 100
     this.createStaticCSSTag()
 
     this.matterEnginePromise = this.loadDependency().then(Matter => {
+      this._Matter = Matter
       const engine = Matter.Engine.create()
+      this._engine = engine
       this.canUpdate = true
       Matter.Events.on(engine, 'beforeUpdate', () => (this.canUpdate = false))
       Matter.Events.on(engine, 'afterUpdate', () => (this.canUpdate = true))
@@ -40,6 +42,22 @@ export default class Matter extends Shadow() {
             body.webComponent.style.top = `${body.position.y - body.webComponent.getAttribute('half-height')}px`
             body.webComponent.style.left = `${body.position.x - body.webComponent.getAttribute('half-width')}px`
             body.webComponent.style.transform = `rotate(${body.angle}rad)`
+            if (body.webComponent?.hasAttribute('self')) this.dispatchEvent(new CustomEvent(this.getAttribute('matter-self-body') || 'matter-self-body', {
+              detail: {
+                body: {
+                  angle: body.angle,
+                  angularSpeed: body.angularSpeed,
+                  angularVelocity: body.angularVelocity,
+                  force: body.force,
+                  position: body.position,
+                  positionImpulse: body.positionImpulse,
+                  velocity: body.velocity
+                }
+              },
+              bubbles: true,
+              cancelable: true,
+              composed: true
+            }))
           })
           if (this.tickCounter % this.updateStaticByTick === 0) this.renderStaticCSS(this.filterStaticBodies(engine.world.bodies))
           Matter.Engine.update(engine)
@@ -72,18 +90,45 @@ export default class Matter extends Shadow() {
         })
       }
     }
+
+    const newWebCwebComponentPromiseMap = new Map()
+    this.matterNotSelfBodyEventListener = async event => {
+      let webComponent = this.root.querySelector(`#${event.detail.key}`)
+      if (!webComponent) {
+        if (!newWebCwebComponentPromiseMap.has(event.detail.key)) newWebCwebComponentPromiseMap.set(event.detail.key, import(`${this.importMetaUrl || import.meta.url.replace(/(.*\/)(.*)$/, '$1')}../bodies/Rectangle.js`).then(module => {
+          webComponent = new module.default
+          webComponent.setAttribute('id', event.detail.key)
+          webComponent.setAttribute('x', '150')
+          webComponent.setAttribute('y', '0')
+          webComponent.setAttribute('width', '50')
+          webComponent.setAttribute('height', '50')
+          this.root.appendChild(webComponent)
+          return webComponent
+        }))
+        webComponent = await newWebCwebComponentPromiseMap.get(event.detail.key)
+      }
+      const body = await webComponent.body
+      this._Matter.Body.setAngle(body, event.detail.body.angle);
+      this._Matter.Body.setPosition(body, event.detail.body.position)
+      this._Matter.Body.setAngularVelocity(body, event.detail.body.angularVelocity)
+      this._Matter.Body.setVelocity(body, event.detail.body.velocity)
+      this.tickCounter++
+      this._Matter.Engine.update(this._engine)
+    }
   }
 
   connectedCallback () {
     this.timeEventTarget.addEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.addEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.addEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
+    document.body.addEventListener('matter-not-self-body', this.matterNotSelfBodyEventListener)
   }
 
   disconnectedCallback () {
     this.timeEventTarget.removeEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.removeEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.removeEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
+    document.body.removeEventListener('matter-not-self-body', this.matterNotSelfBodyEventListener)
   }
 
   /**
