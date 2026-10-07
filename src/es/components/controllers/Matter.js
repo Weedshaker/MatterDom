@@ -17,7 +17,7 @@ export default class Matter extends Shadow() {
     super({ importMetaUrl: import.meta.url, tabindex: 'no-tabindex-style', ...options }, ...args)
 
     this.tickCounter = 0
-    this.updateStaticByTick = 100
+    this.updateStaticByTick = 10000
     this.createStaticCSSTag()
 
     this.matterEnginePromise = this.loadDependency().then(Matter => {
@@ -27,7 +27,15 @@ export default class Matter extends Shadow() {
       this.canUpdate = true
       Matter.Events.on(engine, 'beforeUpdate', () => (this.canUpdate = false))
       Matter.Events.on(engine, 'afterUpdate', () => (this.canUpdate = true))
-      const mouseConstraint = Matter.MouseConstraint.create(engine, { element: document.body }) // TODO: control mouseConstraints etc. at an other place
+      const mouseConstraint = Matter.MouseConstraint.create(engine, {
+        element: document.body,
+        constraint: {
+          stiffness: 0.2,
+          render: {
+            visible: false
+          }
+        }
+      }) // TODO: control mouseConstraints etc. at an other place
       Matter.Composite.add(engine.world, mouseConstraint)
       return [Matter, engine]
     })
@@ -39,25 +47,30 @@ export default class Matter extends Shadow() {
           // this.renderCSS(this.filterDynamicBodies(engine.world.bodies)) // TODO: IPHONE IOS 13+ Bug does not update dom renderer when only changes on variables
           // TODO: retest this workaround
           this.filterDynamicBodies(engine.world.bodies).forEach(body => {
+            
             body.webComponent.style.top = `${body.position.y - body.webComponent.getAttribute('half-height')}px`
             body.webComponent.style.left = `${body.position.x - body.webComponent.getAttribute('half-width')}px`
             body.webComponent.style.transform = `rotate(${body.angle}rad)`
-            if (body.webComponent?.hasAttribute('self')) this.dispatchEvent(new CustomEvent(this.getAttribute('matter-self-body') || 'matter-self-body', {
-              detail: {
-                body: {
-                  angle: body.angle,
-                  angularSpeed: body.angularSpeed,
-                  angularVelocity: body.angularVelocity,
-                  force: body.force,
-                  position: body.position,
-                  positionImpulse: body.positionImpulse,
-                  velocity: body.velocity
-                }
-              },
-              bubbles: true,
-              cancelable: true,
-              composed: true
-            }))
+            // TODO: fix this to transform
+            //body.webComponent.style.transform = `rotate(${body.angle}rad) translate(${body.position.x - body.webComponent.getAttribute('half-width')}px, ${body.position.y - body.webComponent.getAttribute('half-height')}px)`
+            if (body.webComponent?.hasAttribute('self')) {
+              this.dispatchEvent(new CustomEvent(this.getAttribute('matter-self-body') || 'matter-self-body', {
+                detail: {
+                  body: {
+                    angle: body.angle,
+                    angularSpeed: body.angularSpeed,
+                    angularVelocity: body.angularVelocity,
+                    force: body.force,
+                    position: body.position,
+                    positionImpulse: body.positionImpulse,
+                    velocity: body.velocity
+                  }
+                },
+                bubbles: true,
+                cancelable: true,
+                composed: true
+              }))
+            }
           })
           if (this.tickCounter % this.updateStaticByTick === 0) this.renderStaticCSS(this.filterStaticBodies(engine.world.bodies))
           Matter.Engine.update(engine)
@@ -91,11 +104,11 @@ export default class Matter extends Shadow() {
       }
     }
 
-    const newWebCwebComponentPromiseMap = new Map()
+    const newWebComponentPromiseMap = new Map()
     this.matterNotSelfBodyEventListener = async event => {
       let webComponent = this.root.querySelector(`#${event.detail.key}`)
       if (!webComponent) {
-        if (!newWebCwebComponentPromiseMap.has(event.detail.key)) newWebCwebComponentPromiseMap.set(event.detail.key, import(`${this.importMetaUrl || import.meta.url.replace(/(.*\/)(.*)$/, '$1')}../bodies/Rectangle.js`).then(module => {
+        if (!newWebComponentPromiseMap.has(event.detail.key)) newWebComponentPromiseMap.set(event.detail.key, import(`${this.importMetaUrl || import.meta.url.replace(/(.*\/)(.*)$/, '$1')}../bodies/Rectangle.js`).then(module => {
           webComponent = new module.default
           webComponent.setAttribute('id', event.detail.key)
           webComponent.setAttribute('x', '150')
@@ -105,15 +118,14 @@ export default class Matter extends Shadow() {
           this.root.appendChild(webComponent)
           return webComponent
         }))
-        webComponent = await newWebCwebComponentPromiseMap.get(event.detail.key)
+        webComponent = await newWebComponentPromiseMap.get(event.detail.key)
       }
       const body = await webComponent.body
       this._Matter.Body.setAngle(body, event.detail.body.angle);
       this._Matter.Body.setPosition(body, event.detail.body.position)
       this._Matter.Body.setAngularVelocity(body, event.detail.body.angularVelocity)
       this._Matter.Body.setVelocity(body, event.detail.body.velocity)
-      this.tickCounter++
-      this._Matter.Engine.update(this._engine)
+      // do not update engine here
     }
   }
 
@@ -202,7 +214,7 @@ export default class Matter extends Shadow() {
 
   /**
    * @param {HTMLElement} webComponent
-   * @return {[number, number, number, number, {webComponent:HTMLElement}]}
+   * @return {[number, number, number, number, {webComponent:HTMLElement}|any]}
    */
   getRectangle (webComponent) {
     return [
@@ -210,7 +222,7 @@ export default class Matter extends Shadow() {
       Number(webComponent.getAttribute('y')) + Number(webComponent.getAttribute('height')) / 2, // matter.js will use the coordinates for center of body but here we do adjust for top/left
       Number(webComponent.getAttribute('width')),
       Number(webComponent.getAttribute('height')),
-      { webComponent }
+      { webComponent, restitution: webComponent.getAttribute('restitution') || 0.6, friction: webComponent.getAttribute('friction') || 0.1 }
     ]
   }
 
