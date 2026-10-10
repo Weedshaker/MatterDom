@@ -19,7 +19,10 @@ export const BodiesYjs = (ChosenHTMLElement = HTMLElement) => class BodiesYjs ex
 
     this.awarenessChangeEventListener = this.awarenessUpdateEventListener = event => this.awarenessChangeEventListenerOnce(event)
 
+    let counter = 0
     this.objsObserveEventListener = async event => {
+      counter++
+      if (counter%10) return
       const uid = await this.uid
       Array.from(event.detail.type).map(([key, body]) => {
         if (key !== uid) {

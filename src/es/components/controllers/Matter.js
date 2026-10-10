@@ -85,6 +85,8 @@ export default class Matter extends Shadow() {
         this.matterEnginePromise.then(([Matter, engine]) => {
           // this.renderCSS(this.filterDynamicBodies(engine.world.bodies)) // TODO: IPHONE IOS 13+ Bug does not update dom renderer when only changes on variables
           // TODO: retest this workaround
+          updateFuncs.forEach(func => func())
+          updateFuncs = []
           this.filterDynamicBodies(engine.world.bodies).forEach(body => {
             body.webComponent.style.top = `${body.position.y - body.webComponent.getAttribute('half-height')}px`
             body.webComponent.style.left = `${body.position.x - body.webComponent.getAttribute('half-width')}px`
@@ -166,6 +168,7 @@ export default class Matter extends Shadow() {
     // TODO: clear this, when other session disconnects for that body and take dispatch to CRDT control
     const otherBodiesControlledByForeignSession = []
     const newWebComponentPromiseMap = new Map()
+    let updateFuncs = []
     this.yjsNotSelfBodyEventListener = async event => {
       let webComponent = this.root.querySelector(`#${event.detail.key}`) || this.root.querySelector(`[uid="${event.detail.key}"]`)
       // TODO: check what has better performance, always push or have one instance having control on other bodies
@@ -185,10 +188,12 @@ export default class Matter extends Shadow() {
         webComponent = await newWebComponentPromiseMap.get(event.detail.key)
       }
       const body = await webComponent.body
-      this._Matter.Body.setAngle(body, event.detail.body.angle);
-      this._Matter.Body.setPosition(body, event.detail.body.position)
-      this._Matter.Body.setAngularVelocity(body, event.detail.body.angularVelocity)
-      this._Matter.Body.setVelocity(body, event.detail.body.velocity)
+      updateFuncs.push(() => {
+        this._Matter.Body.setAngle(body, event.detail.body.angle);
+        this._Matter.Body.setPosition(body, event.detail.body.position)
+        this._Matter.Body.setAngularVelocity(body, event.detail.body.angularVelocity)
+        this._Matter.Body.setVelocity(body, event.detail.body.velocity)
+      })
       // do not update engine here
     }
   }
