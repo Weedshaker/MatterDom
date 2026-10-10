@@ -1,6 +1,4 @@
-import {Shadow} from '../prototypes/Shadow.js'
-
-export const BodiesYjs = (ChosenHTMLElement = Shadow()) => class BodiesYjs extends ChosenHTMLElement {
+export const BodiesYjs = (ChosenHTMLElement = HTMLElement) => class BodiesYjs extends ChosenHTMLElement {
   /**
    * Creates an instance of yjs users. The constructor will be called for every custom element using this class when initially created.
    *
@@ -24,21 +22,29 @@ export const BodiesYjs = (ChosenHTMLElement = Shadow()) => class BodiesYjs exten
     this.objsObserveEventListener = async event => {
       const uid = await this.uid
       Array.from(event.detail.type).map(([key, body]) => {
-        if (key !== uid) this.dispatchEvent(new CustomEvent(this.getAttribute('matter-not-self-body') || 'matter-not-self-body', {
-          detail: {
-            key,
-            body
-          },
-          bubbles: true,
-          cancelable: true,
-          composed: true
-        }))
+        if (key !== uid) {
+          this.dispatchEvent(new CustomEvent(this.getAttribute('yjs-not-self-body') || 'yjs-not-self-body', {
+            detail: {
+              key,
+              body
+            },
+            bubbles: true,
+            cancelable: true,
+            composed: true
+          }))
+        }
       })
     }
 
     this.matterSelfBodyEventListener = async event => {
       const yMap = (await this.yMap).type
       yMap.set(await this.uid, event.detail.body)
+    }
+
+    this.matterOtherBodyEventListener = async event => {
+      if (!event.detail.body.webComponent.getAttribute('uid')) return
+      const yMap = (await this.yMap).type
+      yMap.set(event.detail.body.webComponent.getAttribute('uid'), event.detail.body)
     }
 
     /** @type {(any)=>void} */
@@ -59,6 +65,7 @@ export const BodiesYjs = (ChosenHTMLElement = Shadow()) => class BodiesYjs exten
     document.body.addEventListener(`${this.namespace}webrtc-awareness-update`, this.awarenessUpdateEventListener, {once: true})
     document.body.addEventListener(`${this.namespace}bodies-observe`, this.objsObserveEventListener)
     document.body.addEventListener('matter-self-body', this.matterSelfBodyEventListener)
+    document.body.addEventListener('matter-other-body', this.matterOtherBodyEventListener)
     if (this.isConnected) this.connectedCallbackOnce()
   }
 
@@ -85,6 +92,7 @@ export const BodiesYjs = (ChosenHTMLElement = Shadow()) => class BodiesYjs exten
     document.body.removeEventListener(`${this.namespace}webrtc-awareness-update`, this.awarenessUpdateEventListener)
     document.body.removeEventListener(`${this.namespace}bodies-observe`, this.objsObserveEventListener)
     document.body.removeEventListener('matter-self-body', this.matterSelfBodyEventListener)
+    document.body.removeEventListener('matter-other-body', this.matterOtherBodyEventListener)
   }
 
   /**

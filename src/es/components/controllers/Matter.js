@@ -22,13 +22,52 @@ export default class Matter extends Shadow() {
 
     this.matterEnginePromise = this.loadDependency().then(Matter => {
       this._Matter = Matter
-      const engine = Matter.Engine.create()
+      const engine = Matter.Engine.create({
+        enableSleeping: false,
+        gravity: {
+            x: 0,
+            y: 0.1,
+            scale: 0.001
+        }
+      })
       this._engine = engine
+      self._engine = engine
+      if (this.hasAttribute('debug')) {
+        const render = Matter.Render.create({
+          element: document.body,
+          engine,
+          options: {
+            width: Number(document.body.getAttribute('data-width')) || 1600,
+            height: Number(document.body.getAttribute('data-height')) || 1200,
+            hasBounds: true,
+            wireframes: true,
+            showBounds: true,
+            showVelocity: true,
+            showCollisions: true,
+            showAxes: true,
+            showPositions: true,
+            showAngleIndicator: true
+          }
+        })
+        Matter.Render.run(render)
+      }
+
+      const WALL = 50
+      const height = Number(document.body.getAttribute('data-height'))
+      const width = Number(document.body.getAttribute('data-width'))
+      const walls = [
+        Matter.Bodies.rectangle(width / 2, height + WALL / 2, width, WALL, { isStatic: true }),
+        Matter.Bodies.rectangle(width / 2, -WALL / 2, width, WALL, { isStatic: true }),
+        Matter.Bodies.rectangle(-WALL / 2, height / 2, WALL, height, { isStatic: true }),
+        Matter.Bodies.rectangle(width + WALL / 2, height / 2, WALL, height, { isStatic: true })
+      ]
+      Matter.Composite.add(engine.world, walls)
+
       this.canUpdate = true
       Matter.Events.on(engine, 'beforeUpdate', () => (this.canUpdate = false))
       Matter.Events.on(engine, 'afterUpdate', () => (this.canUpdate = true))
       const mouseConstraint = Matter.MouseConstraint.create(engine, {
-        element: document.body,
+        element: document.body.querySelector('[self]'),
         constraint: {
           stiffness: 0.2,
           render: {
@@ -47,7 +86,6 @@ export default class Matter extends Shadow() {
           // this.renderCSS(this.filterDynamicBodies(engine.world.bodies)) // TODO: IPHONE IOS 13+ Bug does not update dom renderer when only changes on variables
           // TODO: retest this workaround
           this.filterDynamicBodies(engine.world.bodies).forEach(body => {
-            
             body.webComponent.style.top = `${body.position.y - body.webComponent.getAttribute('half-height')}px`
             body.webComponent.style.left = `${body.position.x - body.webComponent.getAttribute('half-width')}px`
             body.webComponent.style.transform = `rotate(${body.angle}rad)`
@@ -63,7 +101,28 @@ export default class Matter extends Shadow() {
                     force: body.force,
                     position: body.position,
                     positionImpulse: body.positionImpulse,
-                    velocity: body.velocity
+                    velocity: body.velocity,
+                    isUser: true
+                  }
+                },
+                bubbles: true,
+                cancelable: true,
+                composed: true
+              }))
+            }
+            // dispatch all other bodies to crdt
+            if (body.webComponent?.hasAttribute('uid') && !otherBodiesControlledByForeignSession.includes(body.webComponent.hasAttribute('uid')) && !body.webComponent?.hasAttribute('self') && !body.webComponent?.hasAttribute('is-static')) {
+              this.dispatchEvent(new CustomEvent(this.getAttribute('matter-other-body') || 'matter-other-body', {
+                detail: {
+                  body: {
+                    angle: body.angle,
+                    angularSpeed: body.angularSpeed,
+                    angularVelocity: body.angularVelocity,
+                    force: body.force,
+                    position: body.position,
+                    positionImpulse: body.positionImpulse,
+                    velocity: body.velocity,
+                    webComponent: body.webComponent
                   }
                 },
                 bubbles: true,
@@ -104,9 +163,13 @@ export default class Matter extends Shadow() {
       }
     }
 
+    // TODO: clear this, when other session disconnects for that body and take dispatch to CRDT control
+    const otherBodiesControlledByForeignSession = []
     const newWebComponentPromiseMap = new Map()
-    this.matterNotSelfBodyEventListener = async event => {
-      let webComponent = this.root.querySelector(`#${event.detail.key}`)
+    this.yjsNotSelfBodyEventListener = async event => {
+      let webComponent = this.root.querySelector(`#${event.detail.key}`) || this.root.querySelector(`[uid="${event.detail.key}"]`)
+      // TODO: check what has better performance, always push or have one instance having control on other bodies
+      //if (webComponent?.hasAttribute('uid')) otherBodiesControlledByForeignSession.push(webComponent.getAttribute('uid'))
       if (!webComponent) {
         if (!newWebComponentPromiseMap.has(event.detail.key)) newWebComponentPromiseMap.set(event.detail.key, import(`${this.importMetaUrl || import.meta.url.replace(/(.*\/)(.*)$/, '$1')}../bodies/Rectangle.js`).then(module => {
           webComponent = new module.default
@@ -115,6 +178,7 @@ export default class Matter extends Shadow() {
           webComponent.setAttribute('y', '0')
           webComponent.setAttribute('width', '50')
           webComponent.setAttribute('height', '50')
+          if (event.detail.body.isUser) webComponent.setAttribute('is-user', '')
           this.root.appendChild(webComponent)
           return webComponent
         }))
@@ -133,14 +197,15 @@ export default class Matter extends Shadow() {
     this.timeEventTarget.addEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.addEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.addEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
-    document.body.addEventListener('matter-not-self-body', this.matterNotSelfBodyEventListener)
+    document.body.addEventListener('yjs-not-self-body', this.yjsNotSelfBodyEventListener)
+    this.renderCSS()
   }
 
   disconnectedCallback () {
     this.timeEventTarget.removeEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.removeEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.removeEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
-    document.body.removeEventListener('matter-not-self-body', this.matterNotSelfBodyEventListener)
+    document.body.removeEventListener('yjs-not-self-body', this.yjsNotSelfBodyEventListener)
   }
 
   /**
@@ -153,7 +218,10 @@ export default class Matter extends Shadow() {
     this.css = ''
     this.css = /* css */`
       :host {
-        ${this.getCSSTransformString(bodies)}
+        ${bodies ? this.getCSSTransformString(bodies) : ''}
+      }
+      :host([debug]) > * {
+        opacity: 0.5;
       }
     `
   }

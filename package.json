@@ -5,7 +5,7 @@
     "main": "./index.html",
     "scripts": {
         "fix": "standard --fix",
-        "serve": "live-server --port=4200 --host=localhost"
+        "serve": "live-server --port=4500 --host=localhost"
     },
     "author": "weedshaker@gmail.com",
     "license": " GPL-3.0 License",

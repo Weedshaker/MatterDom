@@ -38,6 +38,7 @@ export default class Rectangle extends Shape() {
       cancelable: true,
       composed: true
     }))
+    this.body = new Promise(resolve => (this.resolveBody = resolve))
   }
 
   /**

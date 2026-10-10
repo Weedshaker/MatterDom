@@ -4,24 +4,25 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Matter Dom - Initial Test</title>
 </head>
-<body>
+<body data-width="1600" data-height="1200">
   <c-event-driven-yjs no-blur>
     <c-objects-yjs>
       <c-matter>
         <c-ipfs></c-ipfs>
         <c-time></c-time>
         <b-rectangle x=150 y=0 width=50 height=50 self background="green"></b-rectangle>
-        <b-rectangle x=10 y=500 width=800 height=50 background=darkblue is-static=true cursor=normal></b-rectangle>
+        <b-rectangle x=250 y=0 width=50 height=50 background="red" uid="some-object-uid-999-888-567"></b-rectangle>
+        <b-rectangle x=0 y=1150 width=1600 height=50 background=darkblue is-static=true cursor=normal></b-rectangle>
       </c-matter>
     </c-objects-yjs>
   </c-event-driven-yjs>
   <style>
     body {
       margin: 0;
-      min-height: 100vh;
+      height: attr(data-height px, 800px);
+      width: attr(data-width px, 600px);
     }
   </style>
   <script rel=preload type=module>
