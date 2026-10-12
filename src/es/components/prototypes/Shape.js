@@ -64,8 +64,12 @@ export class Shape extends Shadow() {
       }
     }
 
-    this.matterSleepStartEventListener = event => document.body.removeEventListener('matter-bodies', this.matterBodiesEventListener)
-    this.matterSleepEndEventListener = event => document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
+    this.matterSleepStartEventListener = async event => {
+      if (event.detail.body === await this.body) document.body.removeEventListener('matter-bodies', this.matterBodiesEventListener)
+    }
+    this.matterSleepEndEventListener = async event => {
+      if (event.detail.body === await this.body) document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
+    }
 
     this.yjsSelfUidEventListener = event => this.setAttribute('uid', event.detail.uid)
   }
@@ -86,6 +90,7 @@ export class Shape extends Shadow() {
     document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
     document.body.addEventListener('matter-sleep-start', this.matterSleepStartEventListener)
     document.body.addEventListener('matter-sleep-end', this.matterSleepEndEventListener)
+    // todo: needs to be self only and likely better uuid as additional info
     document.body.addEventListener('yjs-self-uid', this.yjsSelfUidEventListener)
   }
 
@@ -149,7 +154,8 @@ export class Shape extends Shadow() {
         position: ${this.getAttribute('position') ? this.getAttribute('position') : 'var(--position, absolute)'};
         width: ${this.getAttribute('width') ? this.getAttribute('width') + 'px' : '5px'};
         transform-origin: center;
-        opacity: var(--opacity, 1)
+        opacity: var(--opacity, 1);
+        transition: transform 50ms ease;
       }
     `
   }

@@ -94,6 +94,7 @@ export default class Matter extends HTMLElement {
     this.timeEventListener = event => {
       if (event.detail.time && this.canUpdate) {
         this.matterEnginePromise.then(([Matter, engine]) => {
+          Matter.Engine.update(engine)
           this.dispatchEvent(new CustomEvent(this.getAttribute('matter-bodies') || 'matter-bodies', {
             detail: {
               bodies: engine.world.bodies
@@ -102,7 +103,6 @@ export default class Matter extends HTMLElement {
             cancelable: true,
             composed: true
           }))
-          Matter.Engine.update(engine)
         })
       }
     }
@@ -133,8 +133,6 @@ export default class Matter extends HTMLElement {
           // @ts-ignore
           resolveWebComponent(webComponent)
         }
-        // TODO: only set when the values changed
-        //console.log('*********', webComponent)
         const body = await webComponent.body
         Matter.Sleeping.set(body, false)
         Matter.Body.setAngle(body, yjsBody.angle)

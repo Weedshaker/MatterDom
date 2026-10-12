@@ -47,16 +47,23 @@ export default class Bodies extends HTMLElement {
       }
     }
 
+    /** @type {Map<string, any>} */
+    const bodyEvents = new Map()
+    let animationFrameId = null
     this.setBodyEventListener = async event => {
-      // TODO: Bundle the setting of yMap
-      // TODO: check old value is different before setting the yMap
-      // TODO: Throttle the setting of yMap generally
       // TODO: !isSelf shall only be set, when there was no updates from that body && not sleeping
       if (!event.detail.isSelf) return
-      const yMap = (await this.yMap).type
-      yMap.set(event.detail.isSelf
+      bodyEvents.set(event.detail.isSelf
         ? await this.uid
         : event.detail.body.uid, event.detail.body)
+      if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => this._setBody())
+    }
+
+    this._setBody = async () => {
+      const {type: yMap, doc} = await this.yMap
+      doc.transact(() => Array.from(bodyEvents).forEach(([key, value]) => yMap.set(key, value)))
+      bodyEvents.clear()
+      animationFrameId = null
     }
 
     this.removeBodyEventListener = async event => {
@@ -81,7 +88,7 @@ export default class Bodies extends HTMLElement {
 
     /** @type {(any)=>void} */
     this.yMapResolve = map => map
-    /** @type {Promise<{type: import("../../event-driven-web-components-yjs/src/es/dependencies/yjs").Map}>} */
+    /** @type {Promise<{type: import("../../event-driven-web-components-yjs/src/es/dependencies/yjs").Map, doc: import("../../event-driven-web-components-yjs/src/es/dependencies/yjs").Doc}>} */
     this.yMap = new Promise(resolve => (this.yMapResolve = resolve))
   }
 
