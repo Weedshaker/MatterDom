@@ -1,6 +1,4 @@
 // @ts-check
-import { Shadow } from '../prototypes/Shadow.js'
-
 /* global self */
 
 /***
@@ -11,27 +9,20 @@ import { Shadow } from '../prototypes/Shadow.js'
  * @class Matter
  * @type {CustomElementConstructor}
  */
-export default class Matter extends Shadow() {
-  // TODO: querySelectorAll function for dom none web components to be added to matter engine
-  constructor (options = {}, ...args) {
-    super({ importMetaUrl: import.meta.url, tabindex: 'no-tabindex-style', ...options }, ...args)
+export default class Matter extends HTMLElement {
+  constructor () {
+    super()
 
-    this.tickCounter = 0
-    this.updateStaticByTick = 10000
-    this.createStaticCSSTag()
-
+    // start matter engine
     this.matterEnginePromise = this.loadDependency().then(Matter => {
-      this._Matter = Matter
       const engine = Matter.Engine.create({
-        enableSleeping: false,
+        enableSleeping: true,
         gravity: {
-            x: 0,
-            y: 0.1,
-            scale: 0.001
+            x: this.getAttribute('gravity-x') || 0,
+            y: this.getAttribute('gravity-y') || 0.1,
+            scale: this.getAttribute('gravity-scale') || 0.001
         }
       })
-      this._engine = engine
-      self._engine = engine
       if (this.hasAttribute('debug')) {
         const render = Matter.Render.create({
           element: document.body,
@@ -49,9 +40,15 @@ export default class Matter extends Shadow() {
             showAngleIndicator: true
           }
         })
+        const style = document.createElement('style')
+        style.textContent = /* css */`
+          ${this.tagName} {
+            --opacity: 0.5;
+          }
+        `
+        this.appendChild(style)
         Matter.Render.run(render)
       }
-
       const WALL = 50
       const height = Number(document.body.getAttribute('data-height'))
       const width = Number(document.body.getAttribute('data-width'))
@@ -62,81 +59,89 @@ export default class Matter extends Shadow() {
         Matter.Bodies.rectangle(width + WALL / 2, height / 2, WALL, height, { isStatic: true })
       ]
       Matter.Composite.add(engine.world, walls)
-
       this.canUpdate = true
       Matter.Events.on(engine, 'beforeUpdate', () => (this.canUpdate = false))
       Matter.Events.on(engine, 'afterUpdate', () => (this.canUpdate = true))
+      Matter.Events.on(engine, 'sleepStart', event => this.dispatchEvent(new CustomEvent(this.getAttribute('matter-sleep-start') || 'matter-sleep-start', {
+        detail: {
+          body: event.source
+        },
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      })))
+      Matter.Events.on(engine, 'sleepEnd', event => this.dispatchEvent(new CustomEvent(this.getAttribute('matter-sleep-start') || 'matter-sleep-end', {
+        detail: {
+          body: event.source
+        },
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      })))
       const mouseConstraint = Matter.MouseConstraint.create(engine, {
-        element: document.body.querySelector('[self]'),
+        element: document.body,
         constraint: {
           stiffness: 0.2,
           render: {
             visible: false
           }
         }
-      }) // TODO: control mouseConstraints etc. at an other place
+      })
       Matter.Composite.add(engine.world, mouseConstraint)
       return [Matter, engine]
     })
 
     this.timeEventListener = event => {
       if (event.detail.time && this.canUpdate) {
-        this.tickCounter++
         this.matterEnginePromise.then(([Matter, engine]) => {
-          // this.renderCSS(this.filterDynamicBodies(engine.world.bodies)) // TODO: IPHONE IOS 13+ Bug does not update dom renderer when only changes on variables
-          // TODO: retest this workaround
-          updateFuncs.forEach(func => func())
-          updateFuncs = []
-          this.filterDynamicBodies(engine.world.bodies).forEach(body => {
-            body.webComponent.style.top = `${body.position.y - body.webComponent.getAttribute('half-height')}px`
-            body.webComponent.style.left = `${body.position.x - body.webComponent.getAttribute('half-width')}px`
-            body.webComponent.style.transform = `rotate(${body.angle}rad)`
-            // TODO: fix this to transform
-            //body.webComponent.style.transform = `rotate(${body.angle}rad) translate(${body.position.x - body.webComponent.getAttribute('half-width')}px, ${body.position.y - body.webComponent.getAttribute('half-height')}px)`
-            if (body.webComponent?.hasAttribute('self')) {
-              this.dispatchEvent(new CustomEvent(this.getAttribute('matter-self-body') || 'matter-self-body', {
-                detail: {
-                  body: {
-                    angle: body.angle,
-                    angularSpeed: body.angularSpeed,
-                    angularVelocity: body.angularVelocity,
-                    force: body.force,
-                    position: body.position,
-                    positionImpulse: body.positionImpulse,
-                    velocity: body.velocity,
-                    isUser: true
-                  }
-                },
-                bubbles: true,
-                cancelable: true,
-                composed: true
-              }))
-            }
-            // dispatch all other bodies to crdt
-            if (body.webComponent?.hasAttribute('uid') && !otherBodiesControlledByForeignSession.includes(body.webComponent.hasAttribute('uid')) && !body.webComponent?.hasAttribute('self') && !body.webComponent?.hasAttribute('is-static')) {
-              this.dispatchEvent(new CustomEvent(this.getAttribute('matter-other-body') || 'matter-other-body', {
-                detail: {
-                  body: {
-                    angle: body.angle,
-                    angularSpeed: body.angularSpeed,
-                    angularVelocity: body.angularVelocity,
-                    force: body.force,
-                    position: body.position,
-                    positionImpulse: body.positionImpulse,
-                    velocity: body.velocity,
-                    webComponent: body.webComponent
-                  }
-                },
-                bubbles: true,
-                cancelable: true,
-                composed: true
-              }))
-            }
-          })
-          if (this.tickCounter % this.updateStaticByTick === 0) this.renderStaticCSS(this.filterStaticBodies(engine.world.bodies))
+          this.dispatchEvent(new CustomEvent(this.getAttribute('matter-bodies') || 'matter-bodies', {
+            detail: {
+              bodies: engine.world.bodies
+            },
+            bubbles: true,
+            cancelable: true,
+            composed: true
+          }))
           Matter.Engine.update(engine)
         })
       }
+    }
+
+    const webComponentMap = new Map()
+    this.yjsBodiesEventListener = async event => {
+      const [Matter] = await this.matterEnginePromise
+      event.detail.keys.forEach(async ({key, isSelf, getBody}) => {
+        if (isSelf) return
+        const yjsBody = getBody()
+        let webComponent
+        if (webComponentMap.has(key)) {
+          webComponent = await webComponentMap.get(key)
+        } else if ((webComponent = this.querySelector(`[uid="${key}"]`))) {
+          webComponentMap.set(key, Promise.resolve(webComponent))
+        } else {
+          let resolveWebComponent
+          webComponentMap.set(key, new Promise(resolve => (resolveWebComponent = resolve)))
+          const module = await import(`${import.meta.url.replace(/(.*\/)(.*)$/, '$1')}../bodies/Rectangle.js`)
+          webComponent = new module.default
+          webComponent.setAttribute('x', yjsBody.position.x)
+          webComponent.setAttribute('y', yjsBody.position.y)
+          webComponent.setAttribute('uid', yjsBody.uid)
+          // TODO: make dynamic width, height, shape
+          webComponent.setAttribute('width', '50')
+          webComponent.setAttribute('height', '50')
+          this.appendChild(webComponent)
+          // @ts-ignore
+          resolveWebComponent(webComponent)
+        }
+        // TODO: only set when the values changed
+        //console.log('*********', webComponent)
+        const body = await webComponent.body
+        Matter.Sleeping.set(body, false)
+        Matter.Body.setAngle(body, yjsBody.angle)
+        Matter.Body.setPosition(body, yjsBody.position)
+        Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
+        Matter.Body.setVelocity(body, yjsBody.velocity)
+      })
     }
 
     this.addBodyEventListener = event => {
@@ -144,10 +149,10 @@ export default class Matter extends Shadow() {
       let resolveBody = null
       if (event && event.detail && (webComponent = event.detail.webComponent) && (resolveBody = event.detail.resolveBody)) {
         this.matterEnginePromise.then(([Matter, engine]) => {
+          // add a reference pointing to the webComponent
           const body = Matter.Bodies.rectangle(...this.getRectangle(webComponent))
           Matter.Composite.add(engine.world, body)
           body.isStatic = webComponent.isStatic()
-          this.renderStaticCSS(this.filterStaticBodies(engine.world.bodies))
           resolveBody(body)
         })
       }
@@ -155,135 +160,28 @@ export default class Matter extends Shadow() {
 
     this.removeBodyEventListener = event => {
       let webComponent = null
-      if (event && event.detail && (webComponent = event.detail.webComponent)) {
+      if (event && event.detail && (webComponent = event.detail.webComponent) && typeof webComponent.body?.then === 'function') {
         this.matterEnginePromise.then(([Matter, engine]) => {
-          webComponent.body.then(body => {
-            Matter.Composite.remove(engine.world, body)
-            this.renderStaticCSS(this.filterStaticBodies(engine.world.bodies))
-          })
+          webComponent.body.then(body => Matter.Composite.remove(engine.world, body))
         })
       }
-    }
-
-    // TODO: clear this, when other session disconnects for that body and take dispatch to CRDT control
-    const otherBodiesControlledByForeignSession = []
-    const newWebComponentPromiseMap = new Map()
-    let updateFuncs = []
-    this.yjsNotSelfBodyEventListener = async event => {
-      let webComponent = this.root.querySelector(`#${event.detail.key}`) || this.root.querySelector(`[uid="${event.detail.key}"]`)
-      // TODO: check what has better performance, always push or have one instance having control on other bodies
-      //if (webComponent?.hasAttribute('uid')) otherBodiesControlledByForeignSession.push(webComponent.getAttribute('uid'))
-      if (!webComponent) {
-        if (!newWebComponentPromiseMap.has(event.detail.key)) newWebComponentPromiseMap.set(event.detail.key, import(`${this.importMetaUrl || import.meta.url.replace(/(.*\/)(.*)$/, '$1')}../bodies/Rectangle.js`).then(module => {
-          webComponent = new module.default
-          webComponent.setAttribute('id', event.detail.key)
-          webComponent.setAttribute('x', '150')
-          webComponent.setAttribute('y', '0')
-          webComponent.setAttribute('width', '50')
-          webComponent.setAttribute('height', '50')
-          if (event.detail.body.isUser) webComponent.setAttribute('is-user', '')
-          this.root.appendChild(webComponent)
-          return webComponent
-        }))
-        webComponent = await newWebComponentPromiseMap.get(event.detail.key)
-      }
-      const body = await webComponent.body
-      updateFuncs.push(() => {
-        this._Matter.Body.setAngle(body, event.detail.body.angle);
-        this._Matter.Body.setPosition(body, event.detail.body.position)
-        this._Matter.Body.setAngularVelocity(body, event.detail.body.angularVelocity)
-        this._Matter.Body.setVelocity(body, event.detail.body.velocity)
-      })
-      // do not update engine here
     }
   }
 
   connectedCallback () {
-    this.timeEventTarget.addEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
+    document.body.addEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.addEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.addEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
-    document.body.addEventListener('yjs-not-self-body', this.yjsNotSelfBodyEventListener)
-    this.renderCSS()
+    document.body.addEventListener('yjs-bodies', this.yjsBodiesEventListener)
   }
 
   disconnectedCallback () {
-    this.timeEventTarget.removeEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
+    document.body.removeEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.removeEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.removeEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
-    document.body.removeEventListener('yjs-not-self-body', this.yjsNotSelfBodyEventListener)
+    document.body.removeEventListener('yjs-bodies', this.yjsBodiesEventListener)
   }
 
-  /**
-  * renders the dynamic bodies css
-  *
-  * @param {any} bodies
-  * @return {void}
-  */
-  renderCSS (bodies) {
-    this.css = ''
-    this.css = /* css */`
-      :host {
-        ${bodies ? this.getCSSTransformString(bodies) : ''}
-      }
-      :host([debug]) > * {
-        opacity: 0.5;
-      }
-    `
-  }
-
-  /**
-  * creates the style container for static css
-  *
-  * @return {void}
-  */
-  createStaticCSSTag () {
-    this._staticCss = document.createElement('style')
-    this._staticCss.setAttribute('_staticCss', '')
-    this._staticCss.setAttribute('protected', 'true') // this will avoid deletion by html=''
-    this.root.appendChild(this._staticCss)
-  }
-
-  /**
-  * renders the static bodies css
-  *
-  * @param {any} bodies
-  * @return {void}
-  */
-  renderStaticCSS (bodies) {
-    let style = /* css */`
-      :host {
-        ${this.getCSSTransformString(bodies)}
-      }
-    `
-    if (this.namespace) style = style.replace(/--/g, `--${this.namespace}`)
-    this._staticCss.textContent = style
-  }
-
-  /**
-  * renders the static bodies css
-  *
-  * @param {any} bodies
-  * @return {string}
-  */
-  getCSSTransformString (bodies) {
-    return bodies.reduce((acc, body) => `${acc}--${body.webComponent.getAttribute('namespace')}transform: translate(${body.position.x - body.webComponent.getAttribute('half-width')}px, ${body.position.y - body.webComponent.getAttribute('half-height')}px) rotate(${body.angle}rad);`, '')
-  }
-
-  /**
-  * @param {any} bodies
-  * @return {[any]}
-  */
-  filterDynamicBodies (bodies) {
-    return bodies.filter(body => !!body.webComponent && !body.isStatic)
-  }
-
-  /**
-  * @param {any} bodies
-  * @return {[any]}
-  */
-  filterStaticBodies (bodies) {
-    return bodies.filter(body => !!body.webComponent && body.isStatic)
-  }
 
   /**
    * @param {HTMLElement} webComponent
@@ -302,7 +200,7 @@ export default class Matter extends Shadow() {
   /**
    * fetch dependency
    *
-   * @returns {Promise<{Matter: any}>}
+   * @returns {Promise<any>}
    */
   loadDependency () {
     return this.dependencyPromise || (this.dependencyPromise = new Promise(resolve => {
@@ -317,16 +215,8 @@ export default class Matter extends Shadow() {
         matterScript.onload = () => {
           if ('Matter' in self === true) resolve(self.Matter) // eslint-disable-line
         }
-        this.html = matterScript
+        document.head.appendChild(matterScript)
       }
     }))
-  }
-
-  /**
-   * @return {HTMLElement}
-   * @readonly
-   */
-  get timeEventTarget () {
-    return this.hasAttribute('time-event-target-selector') ? document.body.querySelector(this.getAttribute('time-event-target-selector')) || this : this
   }
 }

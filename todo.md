@@ -1,3 +1,19 @@
+make two types for objs self and one type for objs other.
+otherobjs keep updating below frame rate and pause dispaching when received update
+use sleep on other objs smartly
+update all objs at once, which changed only, expl:
+
+if (JSON.stringify(lastSelfUser) !== JSON.stringify(selfUser)) {
+        yMap.set(selfUser.uid, (lastSelfUser = selfUser))
+      } else
+
+
+updateFuncs keep per body only one
+
+use physics engine id if possible
+
+---------
+
 The key is to use polygon vertices as the common format between CSS and Matter.js.
 
 Your CSS shape is a polygon with 9 points. You can convert those percentage coordinates into pixel coordinates for Matter.js, create a physics body with `Matter.Bodies.fromVertices()`, and convert the body's vertices back into CSS percentages.

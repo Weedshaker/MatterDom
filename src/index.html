@@ -6,11 +6,10 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>Matter Dom - Initial Test</title>
 </head>
-<body data-width="1600" data-height="1200">
+<body data-width="1600" data-height="800">
   <c-event-driven-yjs no-blur>
-    <c-objects-yjs>
+    <c-bodies>
       <c-matter>
-        <c-ipfs></c-ipfs>
         <c-time></c-time>
         <b-rectangle x=150 y=0 width=50 height=50 self background="green"></b-rectangle>
         <!--<b-rectangle x=250 y=0 width=50 height=50 background="red" uid="some-object-uid-999-888-567"></b-rectangle>
@@ -24,9 +23,9 @@
         <b-rectangle x=1050 y=0 width=50 height=50 background="red" uid="some-object-uid-999-888-5467"></b-rectangle>
         <b-rectangle x=1150 y=0 width=50 height=50 background="red" uid="some-object-uid-999-888-5567"></b-rectangle>
         <b-rectangle x=1250 y=0 width=50 height=50 background="red" uid="some-object-uid-999-888-5667"></b-rectangle>-->
-        <b-rectangle x=0 y=1150 width=1600 height=50 background=darkblue is-static=true cursor=normal></b-rectangle>
+        <b-rectangle x=0 y=750 width=1600 height=50 background=darkblue is-static=true cursor=normal></b-rectangle>
       </c-matter>
-    </c-objects-yjs>
+    </c-bodies>
   </c-event-driven-yjs>
   <style>
     body {
@@ -42,7 +41,7 @@
       import('./es/components/controllers/Time.js').then(module => ['c-time', module.default]),
       import('./es/components/bodies/Rectangle.js').then(module => ['b-rectangle', module.default]),
       import('./es/event-driven-web-components-yjs/src/es/EventDrivenYjs.js').then(module => ['c-event-driven-yjs', module.EventDrivenYjs()]),
-      import('./es/components/controllers/BodiesYjs.js').then(module => ['c-objects-yjs', module.BodiesYjs()]),
+      import('./es/components/controllers/Bodies.js').then(module => ['c-bodies', module.default]),
     ]).then(elements => elements.forEach(element => {
       // don't define already existing customElements
       if (element && !customElements.get(element[0])) customElements.define(...element)
