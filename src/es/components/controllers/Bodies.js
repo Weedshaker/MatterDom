@@ -51,10 +51,21 @@ export default class Bodies extends HTMLElement {
     const bodyEvents = new Map()
     let animationFrameId = null
     this.setBodyEventListener = async event => {
-      // TODO: !isSelf shall only be set, when there was no updates from that body && not sleeping
-      if (!event.detail.isSelf) return
-      bodyEvents.set(event.detail.body.uid || event.detail.body.oid, event.detail.body)
-      if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => this._setBody())
+      // don't deal with other user bodies as well as with static bodies
+      if (!event.detail.isSelf && (event.detail.body.isStatic || event.detail.body.uid)) return
+      const body = event.detail.body
+      if (event.detail.isSelf) {
+        bodyEvents.set(body.uid || body.oid, body)
+        if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => this._setBody())
+      } else if (!body.ctrl || body.ctrl.uid === await this.uid || body.ctrl.timestamp + 1000 < Date.now()) {
+        // all bodies without a uid
+        body.ctrl = {
+          uid: await this.uid,
+          timestamp: Date.now()
+        }
+        bodyEvents.set(body.uid || body.oid, body)
+        if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => this._setBody())
+      }
     }
 
     this._setBody = async () => {
@@ -89,7 +100,6 @@ export default class Bodies extends HTMLElement {
     this.yMapResolve = map => map
     /** @type {Promise<{type: import("../../event-driven-web-components-yjs/src/es/dependencies/yjs").Map, doc: import("../../event-driven-web-components-yjs/src/es/dependencies/yjs").Doc}>} */
     this.yMap = new Promise(resolve => (this.yMapResolve = resolve))
-    self.yMap = this.yMap
   }
 
   connectedCallback () {

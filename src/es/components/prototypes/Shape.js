@@ -53,7 +53,8 @@ export class Shape extends Shadow() {
                 positionImpulse: body.positionImpulse,
                 velocity: body.velocity,
                 oid: this.getAttribute('oid') || '',
-                uid: this.getAttribute('uid') || ''
+                uid: this.getAttribute('uid') || '',
+                isStatic: this.isStatic()
               },
               isSelf: this.hasAttribute('self')
             },

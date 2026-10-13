@@ -62,21 +62,22 @@ export default class Matter extends HTMLElement {
       this.canUpdate = true
       Matter.Events.on(engine, 'beforeUpdate', () => {
         this.canUpdate = false
-        beforeUpdateFuncs.forEach(func => func())
+        const updatedBodies = beforeUpdateFuncs.map(func => func())
         beforeUpdateFuncs = []
         // check if the body has a ground below, else wake the body up
         engine.world.bodies.forEach(body => {
-          if (!body.isStatic && body.isSleeping) {
-            const { min, max } = body.bounds
-            const collisions = Matter.Query.ray(
-              engine.world.bodies.filter(
-                otherBody => otherBody !== body && !otherBody.isSensor
-              ),
-              { x: min.x + 1, y: max.y + 1 },
-              { x: max.x - 1, y: max.y + 6 }
-            )
-            if (collisions.length < 1) Matter.Sleeping.set(body, false)
-          }
+          if (body.isStatic) return
+          if (!body.isSleeping) return
+          if (updatedBodies.includes(body)) return
+          const { min, max } = body.bounds
+          const collisions = Matter.Query.ray(
+            engine.world.bodies.filter(
+              otherBody => otherBody !== body && !otherBody.isSensor
+            ),
+            { x: min.x + 1, y: max.y + 1 },
+            { x: max.x - 1, y: max.y + 6 }
+          )
+          if (collisions.length < 1) Matter.Sleeping.set(body, false)
         })
       })
       Matter.Events.on(engine, 'afterUpdate', () => (this.canUpdate = true))
@@ -88,7 +89,7 @@ export default class Matter extends HTMLElement {
         cancelable: true,
         composed: true
       })))
-      Matter.Events.on(engine, 'sleepEnd', event => this.dispatchEvent(new CustomEvent(this.getAttribute('matter-sleep-start') || 'matter-sleep-end', {
+      Matter.Events.on(engine, 'sleepEnd', event => this.dispatchEvent(new CustomEvent(this.getAttribute('matter-sleep-end') || 'matter-sleep-end', {
         detail: {
           body: event.source
         },
@@ -110,7 +111,7 @@ export default class Matter extends HTMLElement {
     })
 
     this.timeEventListener = event => {
-      if (event.detail.time && this.canUpdate) {
+      if (this.canUpdate) {
         this.matterEnginePromise.then(([Matter, engine]) => {
           Matter.Engine.update(engine)
           this.dispatchEvent(new CustomEvent(this.getAttribute('matter-bodies') || 'matter-bodies', {
@@ -146,6 +147,7 @@ export default class Matter extends HTMLElement {
           webComponent.setAttribute('y', yjsBody.position.y)
           webComponent.setAttribute('oid', yjsBody.oid)
           webComponent.setAttribute('uid', yjsBody.uid)
+          webComponent.setAttribute('is-static', yjsBody.isStatic)
           // TODO: make dynamic width, height, shape
           webComponent.setAttribute('width', '50')
           webComponent.setAttribute('height', '50')
@@ -160,6 +162,7 @@ export default class Matter extends HTMLElement {
           Matter.Body.setPosition(body, yjsBody.position)
           Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
           Matter.Body.setVelocity(body, yjsBody.velocity)
+          return body
         })
       })
     }
