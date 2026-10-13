@@ -60,7 +60,25 @@ export default class Matter extends HTMLElement {
       ]
       Matter.Composite.add(engine.world, walls)
       this.canUpdate = true
-      Matter.Events.on(engine, 'beforeUpdate', () => (this.canUpdate = false))
+      Matter.Events.on(engine, 'beforeUpdate', () => {
+        this.canUpdate = false
+        beforeUpdateFuncs.forEach(func => func())
+        beforeUpdateFuncs = []
+        // check if the body has a ground below, else wake the body up
+        engine.world.bodies.forEach(body => {
+          if (!body.isStatic && body.isSleeping) {
+            const { min, max } = body.bounds
+            const collisions = Matter.Query.ray(
+              engine.world.bodies.filter(
+                otherBody => otherBody !== body && !otherBody.isSensor
+              ),
+              { x: min.x + 1, y: max.y + 1 },
+              { x: max.x - 1, y: max.y + 6 }
+            )
+            if (collisions.length < 1) Matter.Sleeping.set(body, false)
+          }
+        })
+      })
       Matter.Events.on(engine, 'afterUpdate', () => (this.canUpdate = true))
       Matter.Events.on(engine, 'sleepStart', event => this.dispatchEvent(new CustomEvent(this.getAttribute('matter-sleep-start') || 'matter-sleep-start', {
         detail: {
@@ -108,6 +126,7 @@ export default class Matter extends HTMLElement {
     }
 
     const webComponentMap = new Map()
+    let beforeUpdateFuncs = []
     this.yjsBodiesEventListener = async event => {
       const [Matter] = await this.matterEnginePromise
       event.detail.keys.forEach(async ({key, isSelf, getBody}) => {
@@ -116,7 +135,7 @@ export default class Matter extends HTMLElement {
         let webComponent
         if (webComponentMap.has(key)) {
           webComponent = await webComponentMap.get(key)
-        } else if ((webComponent = this.querySelector(`[uid="${key}"]`))) {
+        } else if ((webComponent = yjsBody.uid ? this.querySelector(`[uid="${yjsBody.uid}"]`) : this.querySelector(`[oid="${yjsBody.oid}"]`))) {
           webComponentMap.set(key, Promise.resolve(webComponent))
         } else {
           let resolveWebComponent
@@ -125,6 +144,7 @@ export default class Matter extends HTMLElement {
           webComponent = new module.default
           webComponent.setAttribute('x', yjsBody.position.x)
           webComponent.setAttribute('y', yjsBody.position.y)
+          webComponent.setAttribute('oid', yjsBody.oid)
           webComponent.setAttribute('uid', yjsBody.uid)
           // TODO: make dynamic width, height, shape
           webComponent.setAttribute('width', '50')
@@ -134,11 +154,13 @@ export default class Matter extends HTMLElement {
           resolveWebComponent(webComponent)
         }
         const body = await webComponent.body
-        Matter.Sleeping.set(body, false)
-        Matter.Body.setAngle(body, yjsBody.angle)
-        Matter.Body.setPosition(body, yjsBody.position)
-        Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
-        Matter.Body.setVelocity(body, yjsBody.velocity)
+        beforeUpdateFuncs.push(() => {
+          Matter.Sleeping.set(body, false)
+          Matter.Body.setAngle(body, yjsBody.angle)
+          Matter.Body.setPosition(body, yjsBody.position)
+          Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
+          Matter.Body.setVelocity(body, yjsBody.velocity)
+        })
       })
     }
 

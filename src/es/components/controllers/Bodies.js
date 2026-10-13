@@ -53,9 +53,7 @@ export default class Bodies extends HTMLElement {
     this.setBodyEventListener = async event => {
       // TODO: !isSelf shall only be set, when there was no updates from that body && not sleeping
       if (!event.detail.isSelf) return
-      bodyEvents.set(event.detail.isSelf
-        ? await this.uid
-        : event.detail.body.uid, event.detail.body)
+      bodyEvents.set(event.detail.body.uid || event.detail.body.oid, event.detail.body)
       if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => this._setBody())
     }
 
@@ -70,7 +68,8 @@ export default class Bodies extends HTMLElement {
       // TODO: Decide how to handle !isSelf elements
       if (!event.detail.isSelf) return
       const yMap = (await this.yMap).type
-      yMap.set(await this.uid, event.detail.body)
+      // TODO: add remove capabilities
+      //yMap.remove(event.detail.body.uid || event.detail.body.oid)
     }
 
     /** @type {(any)=>void} */
@@ -90,6 +89,7 @@ export default class Bodies extends HTMLElement {
     this.yMapResolve = map => map
     /** @type {Promise<{type: import("../../event-driven-web-components-yjs/src/es/dependencies/yjs").Map, doc: import("../../event-driven-web-components-yjs/src/es/dependencies/yjs").Doc}>} */
     this.yMap = new Promise(resolve => (this.yMapResolve = resolve))
+    self.yMap = this.yMap
   }
 
   connectedCallback () {

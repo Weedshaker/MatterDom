@@ -16,11 +16,11 @@ export class Shape extends Shadow() {
     return ['is-static', 'width', 'height']
   }
 
-  constructor (uid, ...args) {
+  constructor (oid, ...args) {
     super(...args)
 
     this.body = new Promise(resolve => (this.resolveBody = resolve))
-    if (uid || !this.hasAttribute('uid')) this.setAttribute('uid', uid || `b_${self.crypto.randomUUID()}`)
+    if (oid || !this.hasAttribute('oid')) this.setAttribute('oid', oid || `b_${self.crypto.randomUUID()}`)
 
     this.html = this.customStyle
     this.copyPropertiesToAttributes()
@@ -52,7 +52,8 @@ export class Shape extends Shadow() {
                 position: body.position,
                 positionImpulse: body.positionImpulse,
                 velocity: body.velocity,
-                uid: this.getAttribute('uid')
+                oid: this.getAttribute('oid') || '',
+                uid: this.getAttribute('uid') || ''
               },
               isSelf: this.hasAttribute('self')
             },
@@ -71,7 +72,10 @@ export class Shape extends Shadow() {
       if (event.detail.body === await this.body) document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
     }
 
-    this.yjsSelfUidEventListener = event => this.setAttribute('uid', event.detail.uid)
+    this.yjsSelfUidEventListener = event => {
+      this.setAttribute('uid', event.detail.uid)
+      document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
+    }
   }
 
   connectedCallback () {
@@ -87,11 +91,11 @@ export class Shape extends Shadow() {
       composed: true
     }))
     // TODO: Use other targets than document body, Environment.globalEventTarget or such...
-    document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
+    if (!this.hasAttribute('self')) document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
     document.body.addEventListener('matter-sleep-start', this.matterSleepStartEventListener)
     document.body.addEventListener('matter-sleep-end', this.matterSleepEndEventListener)
     // todo: needs to be self only and likely better uuid as additional info
-    document.body.addEventListener('yjs-self-uid', this.yjsSelfUidEventListener)
+    if (this.hasAttribute('self')) document.body.addEventListener('yjs-self-uid', this.yjsSelfUidEventListener)
   }
 
   disconnectedCallback () {
@@ -108,7 +112,7 @@ export class Shape extends Shadow() {
       detail: {
         body: {
           isSelf: this.hasAttribute('self'),
-          uid: this.getAttribute('uid')
+          oid: this.getAttribute('oid')
         }
       },
       bubbles: true,
@@ -119,7 +123,7 @@ export class Shape extends Shadow() {
     document.body.removeEventListener('matter-bodies', this.matterBodiesEventListener)
     document.body.removeEventListener('matter-sleep-start', this.matterSleepStartEventListener)
     document.body.removeEventListener('matter-sleep-end', this.matterSleepEndEventListener)
-    document.body.removeEventListener('yjs-self-uid', this.yjsSelfUidEventListener)
+    if (this.hasAttribute('self')) document.body.removeEventListener('yjs-self-uid', this.yjsSelfUidEventListener)
   }
 
   attributeChangedCallback (name, oldValue, newValue) {
@@ -155,7 +159,7 @@ export class Shape extends Shadow() {
         width: ${this.getAttribute('width') ? this.getAttribute('width') + 'px' : '5px'};
         transform-origin: center;
         opacity: var(--opacity, 1);
-        transition: transform 50ms ease;
+        transition: transform 50ms ease-out;
       }
     `
   }
