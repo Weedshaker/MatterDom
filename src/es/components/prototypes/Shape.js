@@ -30,6 +30,7 @@ export class Shape extends Shadow() {
     this.matterBodiesEventListener = event => {
       let body
       if ((body = event.detail.bodies.find(body => body.webComponent === this))) {
+        if (body.isSleeping) return
         /*
         // NOTE: transform has better performance than top and left props
         top: ${body.position.y - this.getAttribute('half-height')}px;
