@@ -155,6 +155,7 @@ export default class Matter extends HTMLElement {
           // @ts-ignore
           resolveWebComponent(webComponent)
         }
+        webComponent.yjsBody = yjsBody
         const body = await webComponent.body
         beforeUpdateFuncs.push(() => {
           Matter.Sleeping.set(body, false)

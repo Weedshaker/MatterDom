@@ -57,9 +57,9 @@ export default class Bodies extends HTMLElement {
       if (event.detail.isSelf) {
         bodyEvents.set(body.uid || body.oid, body)
         if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => this._setBody())
-      } else if (!body.ctrl || body.ctrl.uid === await this.uid || body.ctrl.timestamp + 1000 < Date.now()) {
+      } else if (!event.detail.webComponent.yjsBody.ctrl || event.detail.webComponent.yjsBody.ctrl.uid === await this.uid || event.detail.webComponent.yjsBody.ctrl.timestamp + 1000 < Date.now()) {
         // all bodies without a uid
-        body.ctrl = {
+        event.detail.webComponent.yjsBody.ctrl = body.ctrl = {
           uid: await this.uid,
           timestamp: Date.now()
         }

@@ -21,6 +21,7 @@ export class Shape extends Shadow() {
 
     this.body = new Promise(resolve => (this.resolveBody = resolve))
     if (oid || !this.hasAttribute('oid')) this.setAttribute('oid', oid || `b_${self.crypto.randomUUID()}`)
+    this.yjsBody = {}
 
     this.html = this.customStyle
     this.copyPropertiesToAttributes()
@@ -44,6 +45,7 @@ export class Shape extends Shadow() {
           this.customStyle.textContent = textContent
           this.dispatchEvent(new CustomEvent(this.getAttribute('yjs-set-body') || 'yjs-set-body', {
             detail: {
+              webComponent: this,
               body: {
                 angle: body.angle,
                 angularSpeed: body.angularSpeed,

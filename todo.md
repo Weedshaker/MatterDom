@@ -1,3 +1,12 @@
+
+https://github.com/Weedshaker/MatterDom
+https://docs.yjs.dev/api/y.doc
+https://brm.io/matter-js/docs/classes/Body.html
+https://bennettfeely.com/clippy/
+
+---
+
+
 make two types for objs self and one type for objs other.
 otherobjs keep updating below frame rate and pause dispaching when received update
 use sleep on other objs smartly
