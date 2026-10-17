@@ -11,6 +11,7 @@ import { Shadow } from './Shadow.js'
  * @param {CustomElementConstructor} ChosenHTMLElement
  * @return {CustomElementConstructor | *}
  */
+// TODO: Intersection Observer. Don't dispatch coordinates when not visible except for self, which is always visible...
 export class Shape extends Shadow() {
   static get observedAttributes () {
     return ['is-static', 'width', 'height']

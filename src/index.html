@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- http://localhost:4500/src/index.html?room=MatterDOMie&websocket-url=wss%3A%2F%2Fheroku.decentral.ninja%2F%3Fkeep-alive%3D0 -->
+<!-- websocket: http://localhost:4500/src/index.html?room=MatterDOMie&websocket-url=wss%3A%2F%2Fheroku.decentral.ninja%2F%3Fkeep-alive%3D0 -->
+<!-- websocket: http://localhost:4500/src/index.html?room=MatterDOMie&websocket-url=wss%3A%2F%2Fwebsocket.peerweb.site%2F%3Fkeep-alive%3D0 -->
+<!-- webrtc: http://localhost:4500/src/index.html?room=MatterDOMie&webrtc-url=wss%3A%2F%2Fwebrtc-two.peerweb.site%2F -->
+<!-- webrtc trystero: http://localhost:4500/src/index.html?room=MatterDOMie&webrtc-url=wss%3A%2F%2Fwebrtc-trystero.ninja%2F -->
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -35,6 +38,9 @@
     }
   </style>
   <script rel=preload type=module>
+    // TODO: testing trystero: http://localhost:4500/src/index.html?room=MatterDOMie&webrtc-url=wss%3A%2F%2Fwebrtc-trystero.ninja%2F which requires that object, fix and remove
+    self.Environment = {}
+    Environment.trackers = []
     Promise.all([
       // Helpers
       import('./es/components/controllers/Matter.js').then(module => ['c-matter', module.default]),

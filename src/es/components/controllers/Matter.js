@@ -1,138 +1,98 @@
 // @ts-check
 /* global self */
 
+import Matter from '../../dependencies/matter.min.js'
+
 /***
  * https://github.com/liabru/matter-js
  * https://brm.io/matter-js/docs/
+ * 
+ * TODO: do matter physics inside webworker
  *
  * @export
  * @class Matter
  * @type {CustomElementConstructor}
  */
-export default class Matter extends HTMLElement {
+export default class MatterElement extends HTMLElement {
   constructor () {
     super()
+    this.importMetaUrl = import.meta.url.replace(/(.*\/)(.*)$/, '$1')
 
-    // start matter engine
-    this.matterEnginePromise = this.loadDependency().then(Matter => {
-      const engine = Matter.Engine.create({
-        enableSleeping: true,
-        gravity: {
-            x: this.getAttribute('gravity-x') || 0,
-            y: this.getAttribute('gravity-y') || 0.1,
-            scale: this.getAttribute('gravity-scale') || 0.001
-        }
-      })
-      if (this.hasAttribute('debug')) {
-        const render = Matter.Render.create({
-          element: document.body,
-          engine,
-          options: {
-            width: Number(document.body.getAttribute('data-width')) || 1600,
-            height: Number(document.body.getAttribute('data-height')) || 1200,
-            hasBounds: true,
-            wireframes: true,
-            showBounds: true,
-            showVelocity: true,
-            showCollisions: true,
-            showAxes: true,
-            showPositions: true,
-            showAngleIndicator: true
-          }
-        })
-        const style = document.createElement('style')
-        style.textContent = /* css */`
-          ${this.tagName} {
-            --opacity: 0.5;
-          }
-        `
-        this.appendChild(style)
-        Matter.Render.run(render)
-      }
-      const WALL = 50
-      const height = Number(document.body.getAttribute('data-height'))
-      const width = Number(document.body.getAttribute('data-width'))
-      const walls = [
-        Matter.Bodies.rectangle(width / 2, height + WALL / 2, width, WALL, { isStatic: true }),
-        Matter.Bodies.rectangle(width / 2, -WALL / 2, width, WALL, { isStatic: true }),
-        Matter.Bodies.rectangle(-WALL / 2, height / 2, WALL, height, { isStatic: true }),
-        Matter.Bodies.rectangle(width + WALL / 2, height / 2, WALL, height, { isStatic: true })
-      ]
-      Matter.Composite.add(engine.world, walls)
-      this.canUpdate = true
-      Matter.Events.on(engine, 'beforeUpdate', () => {
-        this.canUpdate = false
-        const updatedBodies = beforeUpdateFuncs.map(func => func())
-        beforeUpdateFuncs = []
-        // check if the body has a ground below, else wake the body up
-        engine.world.bodies.forEach(body => {
-          if (body.isStatic) return
-          if (!body.isSleeping) return
-          if (updatedBodies.includes(body)) return
-          const { min, max } = body.bounds
-          const collisions = Matter.Query.ray(
-            engine.world.bodies.filter(
-              otherBody => otherBody !== body && !otherBody.isSensor
-            ),
-            { x: min.x + 1, y: max.y + 1 },
-            { x: max.x - 1, y: max.y + 6 }
-          )
-          if (collisions.length < 1) Matter.Sleeping.set(body, false)
-        })
-      })
-      Matter.Events.on(engine, 'afterUpdate', () => (this.canUpdate = true))
-      Matter.Events.on(engine, 'sleepStart', event => this.dispatchEvent(new CustomEvent(this.getAttribute('matter-sleep-start') || 'matter-sleep-start', {
-        detail: {
-          body: event.source
-        },
-        bubbles: true,
-        cancelable: true,
-        composed: true
-      })))
-      Matter.Events.on(engine, 'sleepEnd', event => this.dispatchEvent(new CustomEvent(this.getAttribute('matter-sleep-end') || 'matter-sleep-end', {
-        detail: {
-          body: event.source
-        },
-        bubbles: true,
-        cancelable: true,
-        composed: true
-      })))
-      const mouseConstraint = Matter.MouseConstraint.create(engine, {
-        element: document.body,
-        constraint: {
-          stiffness: 0.2,
-          render: {
-            visible: false
-          }
-        }
-      })
-      Matter.Composite.add(engine.world, mouseConstraint)
-      return [Matter, engine]
-    })
-
-    this.timeEventListener = event => {
-      if (this.canUpdate) {
-        this.matterEnginePromise.then(([Matter, engine]) => {
-          Matter.Engine.update(engine)
+    this.worker = new Worker(`${this.importMetaUrl}./MatterWebWorker.js`, {type: 'module'})
+    this.worker.onmessage = event => {
+      switch (event.data.type) {
+        case 'afterUpdate':
           this.dispatchEvent(new CustomEvent(this.getAttribute('matter-bodies') || 'matter-bodies', {
             detail: {
-              bodies: engine.world.bodies
+              bodies: event.data.bodies
             },
             bubbles: true,
             cancelable: true,
             composed: true
           }))
-        })
+          break
+        case 'addedBody':
+          console.log('*********', 'added')
+          break
       }
     }
+    this.worker.postMessage({
+      type: 'engineCreate',
+      options: {
+        create: {
+          enableSleeping: true,
+          gravity: {
+              x: this.getAttribute('gravity-x') || 0,
+              y: this.getAttribute('gravity-y') || 0.1,
+              scale: this.getAttribute('gravity-scale') || 0.001
+          }
+        },
+        walls: {
+          width: Number(document.body.getAttribute('data-width')) || 1600,
+          height: Number(document.body.getAttribute('data-height')) || 1200
+        }
+      }
+    })
+
+    // start matter this.engine
+    // if (this.hasAttribute('debug')) {
+    //   const render = Matter.Render.create({
+    //     element: document.body,
+    //     engine: this.engine,
+    //     options: {
+    //       width: Number(document.body.getAttribute('data-width')) || 1600,
+    //       height: Number(document.body.getAttribute('data-height')) || 1200,
+    //       hasBounds: true,
+    //       wireframes: true,
+    //       showBounds: true,
+    //       showVelocity: true,
+    //       showCollisions: true,
+    //       showAxes: true,
+    //       showPositions: true,
+    //       showAngleIndicator: true
+    //     }
+    //   })
+    //   const style = document.createElement('style')
+    //   style.textContent = /* css */`
+    //     ${this.tagName} {
+    //       --opacity: 0.5;
+    //     }
+    //   `
+    //   this.appendChild(style)
+    //   Matter.Render.run(render)
+    // }
+
+    this.timeEventListener = event => this.worker.postMessage({
+      type: 'tick'
+    })
 
     const webComponentMap = new Map()
-    let beforeUpdateFuncs = []
     this.yjsBodiesEventListener = async event => {
-      const [Matter] = await this.matterEnginePromise
+      const bodies = []
       event.detail.keys.forEach(async ({key, isSelf, getBody}) => {
         if (isSelf) return
         const yjsBody = getBody()
+        bodies.push(yjsBody)
         let webComponent
         if (webComponentMap.has(key)) {
           webComponent = await webComponentMap.get(key)
@@ -141,7 +101,7 @@ export default class Matter extends HTMLElement {
         } else {
           let resolveWebComponent
           webComponentMap.set(key, new Promise(resolve => (resolveWebComponent = resolve)))
-          const module = await import(`${import.meta.url.replace(/(.*\/)(.*)$/, '$1')}../bodies/Rectangle.js`)
+          const module = await import(`${this.importMetaUrl}../bodies/Rectangle.js`)
           webComponent = new module.default
           webComponent.setAttribute('x', yjsBody.position.x)
           webComponent.setAttribute('y', yjsBody.position.y)
@@ -157,14 +117,10 @@ export default class Matter extends HTMLElement {
         }
         webComponent.yjsBody = yjsBody
         const body = await webComponent.body
-        beforeUpdateFuncs.push(() => {
-          Matter.Sleeping.set(body, false)
-          Matter.Body.setAngle(body, yjsBody.angle)
-          Matter.Body.setPosition(body, yjsBody.position)
-          Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
-          Matter.Body.setVelocity(body, yjsBody.velocity)
-          return body
-        })
+      })
+      this.worker.postMessage({
+        type: 'yjsBodies',
+        bodies
       })
     }
 
@@ -172,23 +128,20 @@ export default class Matter extends HTMLElement {
       let webComponent = null
       let resolveBody = null
       if (event && event.detail && (webComponent = event.detail.webComponent) && (resolveBody = event.detail.resolveBody)) {
-        this.matterEnginePromise.then(([Matter, engine]) => {
-          // add a reference pointing to the webComponent
-          const body = Matter.Bodies.rectangle(...this.getRectangle(webComponent))
-          Matter.Composite.add(engine.world, body)
-          body.isStatic = webComponent.isStatic()
-          resolveBody(body)
+        // add a reference pointing to the webComponent
+        this.worker.postMessage({
+          type: 'addBody',
+          oid: webComponent.getAttribute('oid'),
+          
         })
       }
     }
 
     this.removeBodyEventListener = event => {
-      let webComponent = null
+      /*let webComponent = null
       if (event && event.detail && (webComponent = event.detail.webComponent) && typeof webComponent.body?.then === 'function') {
-        this.matterEnginePromise.then(([Matter, engine]) => {
-          webComponent.body.then(body => Matter.Composite.remove(engine.world, body))
-        })
-      }
+        webComponent.body.then(body => Matter.Composite.remove(this.engine.world, body))
+      }*/
     }
   }
 
@@ -219,28 +172,5 @@ export default class Matter extends HTMLElement {
       Number(webComponent.getAttribute('height')),
       { webComponent, restitution: webComponent.getAttribute('restitution') || 0.6, friction: webComponent.getAttribute('friction') || 0.1 }
     ]
-  }
-
-  /**
-   * fetch dependency
-   *
-   * @returns {Promise<any>}
-   */
-  loadDependency () {
-    return this.dependencyPromise || (this.dependencyPromise = new Promise(resolve => {
-      // needs markdown
-      if ('Matter' in self === true) {
-        resolve(self.Matter) // eslint-disable-line
-      } else {
-        const matterScript = document.createElement('script')
-        matterScript.setAttribute('type', 'text/javascript')
-        matterScript.setAttribute('async', '')
-        matterScript.setAttribute('src', 'https://cdn.jsdelivr.net/npm/matter-js/build/matter.min.js')
-        matterScript.onload = () => {
-          if ('Matter' in self === true) resolve(self.Matter) // eslint-disable-line
-        }
-        document.head.appendChild(matterScript)
-      }
-    }))
   }
 }
