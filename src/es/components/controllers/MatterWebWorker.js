@@ -30,12 +30,12 @@ export default class MatterWebWorker {
       Matter.Bodies.rectangle(width + WALL / 2, height / 2, WALL, height, { isStatic: true })
     ]
     Matter.Composite.add(this.engine.world, walls)
-    this.beforeUpdateFuncs = new Map()
+    this.beforeUpdateFuncs = []
     this.canUpdate = true
     Matter.Events.on(this.engine, 'beforeUpdate', () => {
       this.canUpdate = false
-      const updatedBodies = Array.from(this.beforeUpdateFuncs).map(([key, func]) => func())
-      this.beforeUpdateFuncs.clear()
+      const updatedBodies = this.beforeUpdateFuncs.map(func => func())
+      this.beforeUpdateFuncs = []
       // check if the body has a ground below, else wake the body up
       this.engine.world.bodies.forEach(body => {
         if (body.isStatic) return
@@ -133,7 +133,7 @@ self.addEventListener('message', event => {
     case 'yjsBodies':
       //console.log('*********', 'yjsBodies', event.data)
       event.data.bodies.forEach(yjsBody => {
-        if (matterWebWorker.oidToMatterIdMap.has(yjsBody.oid)) matterWebWorker.beforeUpdateFuncs.set(yjsBody.oid, () => {
+        if (matterWebWorker.oidToMatterIdMap.has(yjsBody.oid)) matterWebWorker.beforeUpdateFuncs.push(() => {
           const body = Matter.Composite.get(matterWebWorker.engine.world, matterWebWorker.oidToMatterIdMap.get(yjsBody.oid), 'body')
           Matter.Sleeping.set(body, false)
           Matter.Body.setAngle(body, yjsBody.angle)
@@ -149,7 +149,7 @@ self.addEventListener('message', event => {
       break
     case 'setBody':
       // yjsBody from Shape.js on drag
-      if (matterWebWorker.oidToMatterIdMap.has(event.data.body.oid)) matterWebWorker.beforeUpdateFuncs.set(event.data.body.oid, () => {
+      if (matterWebWorker.oidToMatterIdMap.has(event.data.body.oid)) matterWebWorker.beforeUpdateFuncs.push(() => {
         const body = Matter.Composite.get(matterWebWorker.engine.world, matterWebWorker.oidToMatterIdMap.get(event.data.body.oid), 'body')
         Matter.Sleeping.set(body, false)
         Matter.Body.setPosition(body, event.data.body.position)

@@ -97,11 +97,11 @@ export class Shape extends Shadow() {
 
     let startX, startY, offsetX = 0, offsetY = 0
     this.pointerdownEventListener = event => {
-      //if (!this.body) return
-      /*startX = this.body.position.x
-      startY = this.body.position.y*/
-      startX = event.clientX - offsetX
-      startY = event.clientY - offsetY
+      if (!this.body) return
+      startX = this.body.position.x
+      startY = this.body.position.y
+      /*startX = event.clientX - offsetX
+      startY = event.clientY - offsetY*/
       this.setPointerCapture(event.pointerId)
     }
     this.pointermoveEventListener = event => {
