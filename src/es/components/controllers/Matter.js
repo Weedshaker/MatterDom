@@ -31,9 +31,6 @@ export default class MatterElement extends HTMLElement {
             composed: true
           }))
           break
-        case 'addedBody':
-          console.log('*********', 'added')
-          break
       }
     }
     this.worker.postMessage({
@@ -116,7 +113,6 @@ export default class MatterElement extends HTMLElement {
           resolveWebComponent(webComponent)
         }
         webComponent.yjsBody = yjsBody
-        const body = await webComponent.body
       })
       this.worker.postMessage({
         type: 'yjsBodies',
@@ -126,13 +122,24 @@ export default class MatterElement extends HTMLElement {
 
     this.addBodyEventListener = event => {
       let webComponent = null
-      let resolveBody = null
-      if (event && event.detail && (webComponent = event.detail.webComponent) && (resolveBody = event.detail.resolveBody)) {
+      if (event && event.detail && (webComponent = event.detail.webComponent)) {
         // add a reference pointing to the webComponent
         this.worker.postMessage({
           type: 'addBody',
-          oid: webComponent.getAttribute('oid'),
-          
+          oid: webComponent.getAttribute('oid') || '',
+          shape: this.getRectangle(webComponent)
+        })
+      }
+    }
+
+    this.setBodyEventListener = event => {
+      let webComponent = null
+      if (event && event.detail && event.detail.body && (webComponent = event.detail.webComponent)) {
+        // add a reference pointing to the webComponent
+        this.worker.postMessage({
+          type: 'setBody',
+          oid: webComponent.getAttribute('oid') || '',
+          body: event.detail.body
         })
       }
     }
@@ -148,6 +155,7 @@ export default class MatterElement extends HTMLElement {
   connectedCallback () {
     document.body.addEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.addEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
+    document.body.addEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.addEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
     document.body.addEventListener('yjs-bodies', this.yjsBodiesEventListener)
   }
@@ -155,6 +163,7 @@ export default class MatterElement extends HTMLElement {
   disconnectedCallback () {
     document.body.removeEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.removeEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
+    document.body.removeEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.removeEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
     document.body.removeEventListener('yjs-bodies', this.yjsBodiesEventListener)
   }
@@ -170,7 +179,8 @@ export default class MatterElement extends HTMLElement {
       Number(webComponent.getAttribute('y')) + Number(webComponent.getAttribute('height')) / 2, // matter.js will use the coordinates for center of body but here we do adjust for top/left
       Number(webComponent.getAttribute('width')),
       Number(webComponent.getAttribute('height')),
-      { webComponent, restitution: webComponent.getAttribute('restitution') || 0.6, friction: webComponent.getAttribute('friction') || 0.1 }
+      // @ts-ignore
+      { oid: webComponent.getAttribute('oid') || '', uid: webComponent.getAttribute('uid') || '', restitution: webComponent.getAttribute('restitution') || 0.6, friction: webComponent.getAttribute('friction') || 0.1, isStatic: webComponent.isStatic() }
     ]
   }
 }
