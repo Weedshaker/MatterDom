@@ -25,12 +25,14 @@ export default class Bodies extends HTMLElement {
     }
 
     this.bodiesObserveEventListener = async event => {
+      const uid = await this.uid
       const keys = Array.from(event.detail.yjsEvent?.[0]?.changes?.keys || []).reduce((acc, [key]) => {
         if (!event.detail.type.has(key)) return acc
+        let yjsBody = event.detail.type.get(key)
+        if (yjsBody.uid === uid || yjsBody.ctrl?.uid === uid) return acc
         acc.push(key)
         return acc
       }, [])
-      console.log('*****bodiesObserveEventListener****', keys)
       if (keys.length) {
         const uid = await this.uid
         this.dispatchEvent(new CustomEvent(this.getAttribute(`${this.namespace}bodies`) || `${this.namespace}bodies`, {
@@ -52,7 +54,6 @@ export default class Bodies extends HTMLElement {
     const bodyEvents = new Map()
     let animationFrameId = null
     this.setBodyEventListener = async event => {
-      console.log('*****setBodyEventListener****', event.detail)
       // don't deal with other user bodies as well as with static bodies
       if (!event.detail.isSelf && (event.detail.body.isStatic || event.detail.body.uid)) return
       const body = event.detail.body
