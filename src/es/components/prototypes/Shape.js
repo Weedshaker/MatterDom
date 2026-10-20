@@ -95,41 +95,25 @@ export class Shape extends Shadow() {
       document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
     }
 
-    let startX, startY, offsetX = 0, offsetY = 0
     this.pointerdownEventListener = event => {
       if (!this.body) return
-      startX = this.body.position.x
-      startY = this.body.position.y
-      /*startX = event.clientX - offsetX
-      startY = event.clientY - offsetY*/
       this.setPointerCapture(event.pointerId)
     }
     this.pointermoveEventListener = event => {
       if (!this.hasPointerCapture(event.pointerId)) return
-      offsetX = event.clientX - startX
-      offsetY = event.clientY - startY
-      // const textContent = /* css */`
-      //   :host {
-      //     transform: translate(${offsetX.toFixed(accuracy)}px, ${offsetY.toFixed(accuracy)}px);
-      //   }
-      // `
-      // if (textContent !== this.customStyle.textContent) {
-        //this.customStyle.textContent += textContent
-        // todo: dispatch to matter
-        this.dispatchEvent(new CustomEvent(this.getAttribute('set-body') || 'set-body', {
-          detail: {
-            webComponent: this,
-            body: {
-              position: {x: offsetX, y: offsetY},
-              oid: this.getAttribute('oid') || '',
-              uid: this.getAttribute('uid') || '',
-            }
-          },
-          bubbles: true,
-          cancelable: true,
-          composed: true
-        }))
-      //}
+      this.dispatchEvent(new CustomEvent(this.getAttribute('set-body') || 'set-body', {
+        detail: {
+          webComponent: this,
+          body: {
+            position: {x: event.clientX, y: event.clientY},
+            oid: this.getAttribute('oid') || '',
+            uid: this.getAttribute('uid') || '',
+          }
+        },
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }))
     }
     this.pointerupEventListener = event => {
       if (this.hasPointerCapture(event.pointerId)) {
