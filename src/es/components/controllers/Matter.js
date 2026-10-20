@@ -17,6 +17,7 @@ import MatterWebWorker from './MatterWebWorker.js'
 export default class MatterElement extends HTMLElement {
   constructor () {
     super()
+
     this.importMetaUrl = import.meta.url.replace(/(.*\/)(.*)$/, '$1')
 
     const engineCreateOptions = {
@@ -33,6 +34,7 @@ export default class MatterElement extends HTMLElement {
         height: Number(document.body.getAttribute('data-height')) || 1200
       }
     }
+
     if (this.hasAttribute('debug')) {
       this.worker = new MatterWebWorker(engineCreateOptions)
         // start matter this.engine
@@ -85,6 +87,59 @@ export default class MatterElement extends HTMLElement {
       }
     }
 
+    this.addBodyEventListener = event => {
+      let webComponent = null
+      if (event && event.detail && (webComponent = event.detail.webComponent)) {
+        // add a reference pointing to the webComponent
+        this.worker.postMessage({
+          type: 'addBody',
+          oid: webComponent.getAttribute('oid') || '',
+          shape: MatterElement.getRectangle(webComponent)
+        })
+      }
+    }
+
+    this.setBodyEventListener = event => {
+      let webComponent = null
+      if (event && event.detail && event.detail.body && (webComponent = event.detail.webComponent)) {
+        // add a reference pointing to the webComponent
+        this.worker.postMessage({
+          type: 'setBody',
+          oid: webComponent.getAttribute('oid') || '',
+          body: event.detail.body
+        })
+      }
+    }
+
+    this.removeBodyEventListener = event => {
+      /*let webComponent = null
+      if (event && event.detail && (webComponent = event.detail.webComponent) && typeof webComponent.body?.then === 'function') {
+        webComponent.body.then(body => Matter.Composite.remove(this.engine.world, body))
+      }*/
+    }
+
+    this.bodyPointerDownEventListener = event => {
+      let webComponent = null
+      if (event && event.detail && (webComponent = event.detail.webComponent)) {
+        this.worker.postMessage({
+          type: 'bodyPointerDown',
+          oid: webComponent.getAttribute('oid') || '',
+          position: event.detail.position
+        })
+      }
+    }
+    this.bodyPointerMoveEventListener = event => {
+      this.worker.postMessage({
+        type: 'bodyPointerMove',
+        position: event.detail.position
+      })
+    }
+    this.bodyPointerUpEventListener = event => {
+      this.worker.postMessage({
+        type: 'bodyPointerUp'
+      })
+    }
+
     const webComponentMap = new Map()
     this.yjsBodiesEventListener = async event => {
       const bodies = []
@@ -121,43 +176,15 @@ export default class MatterElement extends HTMLElement {
         bodies
       })
     }
-
-    this.addBodyEventListener = event => {
-      let webComponent = null
-      if (event && event.detail && (webComponent = event.detail.webComponent)) {
-        // add a reference pointing to the webComponent
-        this.worker.postMessage({
-          type: 'addBody',
-          oid: webComponent.getAttribute('oid') || '',
-          shape: MatterElement.getRectangle(webComponent)
-        })
-      }
-    }
-
-    this.setBodyEventListener = event => {
-      let webComponent = null
-      if (event && event.detail && event.detail.body && (webComponent = event.detail.webComponent)) {
-        // add a reference pointing to the webComponent
-        this.worker.postMessage({
-          type: 'setBody',
-          oid: webComponent.getAttribute('oid') || '',
-          body: event.detail.body
-        })
-      }
-    }
-
-    this.removeBodyEventListener = event => {
-      /*let webComponent = null
-      if (event && event.detail && (webComponent = event.detail.webComponent) && typeof webComponent.body?.then === 'function') {
-        webComponent.body.then(body => Matter.Composite.remove(this.engine.world, body))
-      }*/
-    }
   }
 
   connectedCallback () {
     document.body.addEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.addEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.addEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
+    document.body.addEventListener(this.getAttribute('body-pointer-down') || 'body-pointer-down', this.bodyPointerDownEventListener)
+    document.body.addEventListener(this.getAttribute('body-pointer-move') || 'body-pointer-move', this.bodyPointerMoveEventListener)
+    document.body.addEventListener(this.getAttribute('body-pointer-up') || 'body-pointer-up', this.bodyPointerUpEventListener)
     document.body.addEventListener('yjs-bodies', this.yjsBodiesEventListener)
   }
 
@@ -165,6 +192,9 @@ export default class MatterElement extends HTMLElement {
     document.body.removeEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.removeEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.removeEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
+    document.body.removeEventListener(this.getAttribute('body-pointer-down') || 'body-pointer-down', this.bodyPointerDownEventListener)
+    document.body.removeEventListener(this.getAttribute('body-pointer-move') || 'body-pointer-move', this.bodyPointerMoveEventListener)
+    document.body.removeEventListener(this.getAttribute('body-pointer-up') || 'body-pointer-up', this.bodyPointerUpEventListener)
     document.body.removeEventListener('yjs-bodies', this.yjsBodiesEventListener)
   }
 

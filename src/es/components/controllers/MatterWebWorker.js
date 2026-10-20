@@ -134,6 +134,31 @@ export default class MatterWebWorker {
           Matter.Body.setPosition(body, event.data.body.position)
           return body
         })
+      case 'bodyPointerDown':
+        if (this.dragConstraint) Matter.Composite.remove(this.engine.world, this.dragConstraint)
+        const bodyA = Matter.Composite.get(this.engine.world, this.oidToMatterIdMap.get(event.data.oid), 'body')
+        if (!bodyA) return
+        this.dragConstraint = Matter.Constraint.create({
+          bodyA,
+          pointA: {
+            x: event.data.position.x - bodyA.position.x,
+            y: event.data.position.y - bodyA.position.y
+          },
+          pointB: event.data.position,
+          stiffness: 0.2,
+          damping: 0.1,
+          length: 0
+        })
+        Matter.Composite.add(this.engine.world, this.dragConstraint)
+        break
+      case 'bodyPointerMove':
+        if (!this.dragConstraint) return
+        this.dragConstraint.pointB.x = event.data.position.x
+        this.dragConstraint.pointB.y = event.data.position.y
+        break
+      case 'bodyPointerUp':
+        Matter.Composite.remove(this.engine.world, this.dragConstraint)
+        this.dragConstraint = null
         break
     }
   }

@@ -27,19 +27,6 @@ export class Shape extends Shadow() {
     this.copyPropertiesToAttributes()
     const accuracy = this.hasAttribute('accuracy') ? Number(this.hasAttribute('accuracy')) : 2
 
-    /*
-    const mouseConstraint = Matter.MouseConstraint.create(this.engine, {
-      element: document.body,
-      constraint: {
-        stiffness: 0.2,
-        render: {
-          visible: false
-        }
-      }
-    })
-    Matter.Composite.add(this.engine.world, mouseConstraint)
-    */
-
     this.matterBodiesEventListener = event => {
       let body
       if ((body = event.detail.bodies.find(body => body.oid === this.getAttribute('oid')))) {
@@ -98,17 +85,21 @@ export class Shape extends Shadow() {
     this.pointerdownEventListener = event => {
       if (!this.body) return
       this.setPointerCapture(event.pointerId)
+      this.dispatchEvent(new CustomEvent(this.getAttribute('body-pointer-down') || 'body-pointer-down', {
+        detail: {
+          webComponent: this,
+          position: {x: event.clientX, y: event.clientY}
+        },
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }))
     }
     this.pointermoveEventListener = event => {
       if (!this.hasPointerCapture(event.pointerId)) return
-      this.dispatchEvent(new CustomEvent(this.getAttribute('set-body') || 'set-body', {
+      this.dispatchEvent(new CustomEvent(this.getAttribute('body-pointer-move') || 'body-pointer-move', {
         detail: {
-          webComponent: this,
-          body: {
-            position: {x: event.clientX, y: event.clientY},
-            oid: this.getAttribute('oid') || '',
-            uid: this.getAttribute('uid') || '',
-          }
+          position: {x: event.clientX, y: event.clientY}
         },
         bubbles: true,
         cancelable: true,
@@ -116,9 +107,12 @@ export class Shape extends Shadow() {
       }))
     }
     this.pointerupEventListener = event => {
-      if (this.hasPointerCapture(event.pointerId)) {
-        this.releasePointerCapture(event.pointerId)
-      }
+      this.dispatchEvent(new CustomEvent(this.getAttribute('body-pointer-up') || 'body-pointer-up', {
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }))
+      if (this.hasPointerCapture(event.pointerId)) this.releasePointerCapture(event.pointerId)
     }
   }
 
@@ -204,15 +198,21 @@ export class Shape extends Shadow() {
   */
   renderCSS () {
     this.css = /* css */`
+      :host, :host * {
+        -webkit-user-drag: none;
+        user-select: none;
+      }
       :host {
         background: ${this.getAttribute('background') ? this.getAttribute('background') : 'var(--background, #111)'};
-        cursor: ${this.getAttribute('cursor') ? this.getAttribute('cursor') : 'var(--cursor, move)'};
         height: ${this.getAttribute('height') ? this.getAttribute('height') + 'px' : '5px'};
         position: ${this.getAttribute('position') ? this.getAttribute('position') : 'var(--position, absolute)'};
         width: ${this.getAttribute('width') ? this.getAttribute('width') + 'px' : '5px'};
         transform-origin: center;
         opacity: var(--opacity, 1);
         transition: transform 50ms ease-out;
+      }
+      :host([self]) {
+        cursor: ${this.getAttribute('cursor') ? this.getAttribute('cursor') : 'var(--cursor, move)'};
       }
     `
   }
