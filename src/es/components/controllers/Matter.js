@@ -2,6 +2,7 @@
 /* global self */
 
 import Matter from '../../dependencies/matter.min.js'
+import MatterWebWorker from './MatterWebWorker.js'
 
 /***
  * https://github.com/liabru/matter-js
@@ -18,8 +19,58 @@ export default class MatterElement extends HTMLElement {
     super()
     this.importMetaUrl = import.meta.url.replace(/(.*\/)(.*)$/, '$1')
 
-    this.worker = new Worker(`${this.importMetaUrl}./MatterWebWorker.js`, {type: 'module'})
+    const engineCreateOptions = {
+      create: {
+        enableSleeping: true,
+        gravity: {
+            x: this.getAttribute('gravity-x') || 0,
+            y: this.getAttribute('gravity-y') || 0.1,
+            scale: this.getAttribute('gravity-scale') || 0.001
+        }
+      },
+      walls: {
+        width: Number(document.body.getAttribute('data-width')) || 1600,
+        height: Number(document.body.getAttribute('data-height')) || 1200
+      }
+    }
+    if (this.hasAttribute('debug')) {
+      this.worker = new MatterWebWorker(engineCreateOptions)
+        // start matter this.engine
+        const render = Matter.Render.create({
+          element: document.body,
+          engine: this.worker.engine,
+          options: {
+            width: Number(document.body.getAttribute('data-width')) || 1600,
+            height: Number(document.body.getAttribute('data-height')) || 1200,
+            hasBounds: true,
+            wireframes: true,
+            showBounds: true,
+            showVelocity: true,
+            showCollisions: true,
+            showAxes: true,
+            showPositions: true,
+            showAngleIndicator: true
+          }
+        })
+        const style = document.createElement('style')
+        style.textContent = /* css */`
+          ${this.tagName} {
+            --opacity: 0.5;
+          }
+        `
+        this.appendChild(style)
+        Matter.Render.run(render)
+    } else {
+      this.worker = new Worker(`${this.importMetaUrl}./MatterWebWorker.js`, {type: 'module'})
+      this.worker.addEventListener('error', error => console.error('MatterWebWorker.js Error:', error))
+      this.worker.addEventListener('messageerror', error => console.error('MatterWebWorker.js message deserialization failed:', error))
+      this.worker.postMessage({
+        type: 'engineCreate',
+        options: engineCreateOptions
+      })
+    }
     this.worker.onmessage = event => {
+      if (!event.data) event.data = event
       switch (event.data.type) {
         case 'afterUpdate':
           this.dispatchEvent(new CustomEvent(this.getAttribute('matter-bodies') || 'matter-bodies', {
@@ -33,55 +84,6 @@ export default class MatterElement extends HTMLElement {
           break
       }
     }
-    this.worker.postMessage({
-      type: 'engineCreate',
-      options: {
-        create: {
-          enableSleeping: true,
-          gravity: {
-              x: this.getAttribute('gravity-x') || 0,
-              y: this.getAttribute('gravity-y') || 0.1,
-              scale: this.getAttribute('gravity-scale') || 0.001
-          }
-        },
-        walls: {
-          width: Number(document.body.getAttribute('data-width')) || 1600,
-          height: Number(document.body.getAttribute('data-height')) || 1200
-        }
-      }
-    })
-
-    // start matter this.engine
-    // if (this.hasAttribute('debug')) {
-    //   const render = Matter.Render.create({
-    //     element: document.body,
-    //     engine: this.engine,
-    //     options: {
-    //       width: Number(document.body.getAttribute('data-width')) || 1600,
-    //       height: Number(document.body.getAttribute('data-height')) || 1200,
-    //       hasBounds: true,
-    //       wireframes: true,
-    //       showBounds: true,
-    //       showVelocity: true,
-    //       showCollisions: true,
-    //       showAxes: true,
-    //       showPositions: true,
-    //       showAngleIndicator: true
-    //     }
-    //   })
-    //   const style = document.createElement('style')
-    //   style.textContent = /* css */`
-    //     ${this.tagName} {
-    //       --opacity: 0.5;
-    //     }
-    //   `
-    //   this.appendChild(style)
-    //   Matter.Render.run(render)
-    // }
-
-    this.timeEventListener = event => this.worker.postMessage({
-      type: 'tick'
-    })
 
     const webComponentMap = new Map()
     this.yjsBodiesEventListener = async event => {
@@ -127,7 +129,7 @@ export default class MatterElement extends HTMLElement {
         this.worker.postMessage({
           type: 'addBody',
           oid: webComponent.getAttribute('oid') || '',
-          shape: this.getRectangle(webComponent)
+          shape: MatterElement.getRectangle(webComponent)
         })
       }
     }
@@ -153,7 +155,6 @@ export default class MatterElement extends HTMLElement {
   }
 
   connectedCallback () {
-    document.body.addEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.addEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.addEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.addEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
@@ -161,7 +162,6 @@ export default class MatterElement extends HTMLElement {
   }
 
   disconnectedCallback () {
-    document.body.removeEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.removeEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
     document.body.removeEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.removeEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
@@ -173,7 +173,7 @@ export default class MatterElement extends HTMLElement {
    * @param {HTMLElement} webComponent
    * @return {[number, number, number, number, {webComponent:HTMLElement}|any]}
    */
-  getRectangle (webComponent) {
+  static getRectangle (webComponent) {
     return [
       Number(webComponent.getAttribute('x')) + Number(webComponent.getAttribute('width')) / 2, // matter.js will use the coordinates for center of body but here we do adjust for top/left
       Number(webComponent.getAttribute('y')) + Number(webComponent.getAttribute('height')) / 2, // matter.js will use the coordinates for center of body but here we do adjust for top/left

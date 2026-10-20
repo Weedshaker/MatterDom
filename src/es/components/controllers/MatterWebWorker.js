@@ -16,9 +16,15 @@ export default class MatterWebWorker {
   constructor (options) {
     this.importMetaUrl = import.meta.url.replace(/(.*\/)(.*)$/, '$1')
 
+    try {
+      // @ts-ignore
+      if (globalThis instanceof WorkerGlobalScope) self.addEventListener('message', this.postMessage)
+    } catch (error) {
+      console.info('MatterWebWorker is running in main threat due to debugging')
+    }
+
     // start matter engine
     this.engine = Matter.Engine.create(options.create)
-    console.log('*********', this.engine)
     // TODO: fix the wall and dimension stuff
     const WALL = 50
     const height = options.walls.height
@@ -53,7 +59,7 @@ export default class MatterWebWorker {
       })
     })
     Matter.Events.on(this.engine, 'afterUpdate', () => {
-      self.postMessage({ type: 'afterUpdate', bodies: this.engine.world.bodies })
+      this.onmessage({ type: 'afterUpdate', bodies: this.engine.world.bodies })
       this.canUpdate = true
     })
     // Matter.Events.on(this.engine, 'sleepStart', event => this.dispatchEvent(new CustomEvent('matter-sleep-start', {
@@ -73,22 +79,6 @@ export default class MatterWebWorker {
     //   composed: true
     // })))
 
-    this.timeEventListener = event => {
-      /*if (this.canUpdate) {
-        Matter.Engine.update(this.engine)
-        //self.postMessage({ type: 'afterUpdate', bodies: this.engine.world.bodies })
-      }*/
-    }
-    // TODO: remove time from outside but run time inside web worker
-    const addEventListenerRequestAnimationFrame = (func, time, keepRunning = true) => {
-      this._isRunning = keepRunning
-      func(time)
-      if (this._isRunning) self.requestAnimationFrame(time => addEventListenerRequestAnimationFrame(func, time))
-    }
-    addEventListenerRequestAnimationFrame(() => {
-      if (this.canUpdate) Matter.Engine.update(this.engine)
-    })
-
     this.oidToMatterIdMap = new Map()
     this.addBodyEventListener = event => {
       const body = Matter.Bodies.rectangle(...event.data.shape)
@@ -104,57 +94,57 @@ export default class MatterWebWorker {
     //     })
     //   }
     // }
+
+    MatterWebWorker.tick(() => {
+      if (this.canUpdate) Matter.Engine.update(this.engine)
+    })
   }
 
-  /**
-   * @param {HTMLElement} webComponent
-   * @return {[number, number, number, number, {webComponent:HTMLElement}|any]}
-   */
-  getRectangle (webComponent) {
-    return [
-      Number(webComponent.getAttribute('x')) + Number(webComponent.getAttribute('width')) / 2, // matter.js will use the coordinates for center of body but here we do adjust for top/left
-      Number(webComponent.getAttribute('y')) + Number(webComponent.getAttribute('height')) / 2, // matter.js will use the coordinates for center of body but here we do adjust for top/left
-      Number(webComponent.getAttribute('width')),
-      Number(webComponent.getAttribute('height')),
-      { webComponent, restitution: webComponent.getAttribute('restitution') || 0.6, friction: webComponent.getAttribute('friction') || 0.1 }
-    ]
+  static tick (func, time, keepRunning = true) {
+    this._isRunning = keepRunning
+    func(time)
+    if (this._isRunning) self.requestAnimationFrame(time => MatterWebWorker.tick(func, time))
+  }
+
+  // this is the onmessage listener within the web worker but called postMessage from the outside
+  postMessage = event => {
+    if (!event.data) event.data = event
+    switch (event.data.type) {
+      case 'yjsBodies':
+        event.data.bodies.forEach(yjsBody => {
+          if (this.oidToMatterIdMap.has(yjsBody.oid)) this.beforeUpdateFuncs.push(() => {
+            const body = Matter.Composite.get(this.engine.world, this.oidToMatterIdMap.get(yjsBody.oid), 'body')
+            Matter.Sleeping.set(body, false)
+            Matter.Body.setAngle(body, yjsBody.angle)
+            Matter.Body.setPosition(body, yjsBody.position)
+            Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
+            Matter.Body.setVelocity(body, yjsBody.velocity)
+            return body
+          })
+        })
+        break
+      case 'addBody':
+        this.addBodyEventListener(event)
+        break
+      case 'setBody':
+        // yjsBody from Shape.js on drag
+        if (this.oidToMatterIdMap.has(event.data.body.oid)) this.beforeUpdateFuncs.push(() => {
+          const body = Matter.Composite.get(this.engine.world, this.oidToMatterIdMap.get(event.data.body.oid), 'body')
+          Matter.Sleeping.set(body, false)
+          Matter.Body.setPosition(body, event.data.body.position)
+          return body
+        })
+        break
+    }
+  }
+
+  // this is the postMessage function within the web worker but called onmessage from the outside
+  onmessage (message) {
+    self.postMessage(message)
   }
 }
 
-let matterWebWorker
-self.addEventListener('message', event => {
-  switch (event.data.type) {
-    case 'engineCreate':
-      matterWebWorker = new MatterWebWorker(event.data.options)
-      break
-    case 'tick':
-      matterWebWorker.timeEventListener(event)
-      break
-    case 'yjsBodies':
-      //console.log('*********', 'yjsBodies', event.data)
-      event.data.bodies.forEach(yjsBody => {
-        if (matterWebWorker.oidToMatterIdMap.has(yjsBody.oid)) matterWebWorker.beforeUpdateFuncs.push(() => {
-          const body = Matter.Composite.get(matterWebWorker.engine.world, matterWebWorker.oidToMatterIdMap.get(yjsBody.oid), 'body')
-          Matter.Sleeping.set(body, false)
-          Matter.Body.setAngle(body, yjsBody.angle)
-          Matter.Body.setPosition(body, yjsBody.position)
-          Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
-          Matter.Body.setVelocity(body, yjsBody.velocity)
-          return body
-        })
-      })
-      break
-    case 'addBody':
-      matterWebWorker.addBodyEventListener(event)
-      break
-    case 'setBody':
-      // yjsBody from Shape.js on drag
-      if (matterWebWorker.oidToMatterIdMap.has(event.data.body.oid)) matterWebWorker.beforeUpdateFuncs.push(() => {
-        const body = Matter.Composite.get(matterWebWorker.engine.world, matterWebWorker.oidToMatterIdMap.get(event.data.body.oid), 'body')
-        Matter.Sleeping.set(body, false)
-        Matter.Body.setPosition(body, event.data.body.position)
-        return body
-      })
-      break
-  }
-})
+try {
+  // @ts-ignore
+  if (globalThis instanceof WorkerGlobalScope) self.addEventListener('message', event => new MatterWebWorker(event.data.options), {once: true})
+} catch (error) {}
