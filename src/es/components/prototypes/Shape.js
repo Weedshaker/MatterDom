@@ -31,6 +31,7 @@ export class Shape extends Shadow() {
       let body
       if ((body = event.detail.bodies.find(body => body.oid === this.getAttribute('oid')))) {
         this.body = body
+        // TODO: fix not rotating and last aligning bodies
         if (body.isSleeping) return
         // TODO: do the request animation frame here instead of at bodies.js
         /*
@@ -39,9 +40,10 @@ export class Shape extends Shadow() {
         left: ${body.position.x - this.getAttribute('half-width')}px;
         transform: rotate(${body.angle}rad);
         */
+        // NOTE: translate3d is more likely to be handed to gpu than just translate
         const textContent = /* css */`
           :host {
-            transform: translate(${(body.position.x - this.getAttribute('half-width')).toFixed(accuracy)}px, ${(body.position.y - this.getAttribute('half-height')).toFixed(accuracy)}px) rotate(${body.angle.toFixed(accuracy)}rad);
+            transform: translate3d(${(body.position.x - this.getAttribute('half-width')).toFixed(accuracy)}px, ${(body.position.y - this.getAttribute('half-height')).toFixed(accuracy)}px, 0) rotate(${body.angle.toFixed(accuracy)}rad);
           }
         `
         if (textContent !== this.customStyle.textContent) {
