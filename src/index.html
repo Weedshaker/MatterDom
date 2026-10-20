@@ -35,6 +35,7 @@
     }
   </style>
   <script rel=preload type=module>
+    self.Environment = {trackers:[]}
     Promise.all([
       // Helpers
       import('./es/components/controllers/Matter.js').then(module => ['c-matter', module.default]),
