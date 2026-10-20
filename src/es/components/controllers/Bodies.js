@@ -25,8 +25,11 @@ export default class Bodies extends HTMLElement {
     }
 
     this.bodiesObserveEventListener = async event => {
+      const uid = await this.uid
       const keys = Array.from(event.detail.yjsEvent?.[0]?.changes?.keys || []).reduce((acc, [key]) => {
         if (!event.detail.type.has(key)) return acc
+        let yjsBody = event.detail.type.get(key)
+        if (yjsBody.uid === uid || yjsBody.ctrl?.uid === uid) return acc
         acc.push(key)
         return acc
       }, [])

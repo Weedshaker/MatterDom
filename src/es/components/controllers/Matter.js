@@ -1,32 +1,46 @@
 // @ts-check
 /* global self */
 
+import Matter from '../../dependencies/matter.min.js'
+import MatterWebWorker from './MatterWebWorker.js'
+
 /***
  * https://github.com/liabru/matter-js
  * https://brm.io/matter-js/docs/
+ * 
+ * TODO: do matter physics inside webworker
  *
  * @export
  * @class Matter
  * @type {CustomElementConstructor}
  */
-export default class Matter extends HTMLElement {
+export default class MatterElement extends HTMLElement {
   constructor () {
     super()
 
-    // start matter engine
-    this.matterEnginePromise = this.loadDependency().then(Matter => {
-      const engine = Matter.Engine.create({
+    this.importMetaUrl = import.meta.url.replace(/(.*\/)(.*)$/, '$1')
+
+    const engineCreateOptions = {
+      create: {
         enableSleeping: true,
         gravity: {
             x: this.getAttribute('gravity-x') || 0,
             y: this.getAttribute('gravity-y') || 0.1,
             scale: this.getAttribute('gravity-scale') || 0.001
         }
-      })
-      if (this.hasAttribute('debug')) {
+      },
+      walls: {
+        width: Number(document.body.getAttribute('data-width')) || 1600,
+        height: Number(document.body.getAttribute('data-height')) || 1200
+      }
+    }
+
+    if (this.hasAttribute('debug')) {
+      this.worker = new MatterWebWorker(engineCreateOptions)
+        // start matter this.engine
         const render = Matter.Render.create({
           element: document.body,
-          engine,
+          engine: this.worker.engine,
           options: {
             width: Number(document.body.getAttribute('data-width')) || 1600,
             height: Number(document.body.getAttribute('data-height')) || 1200,
@@ -48,91 +62,91 @@ export default class Matter extends HTMLElement {
         `
         this.appendChild(style)
         Matter.Render.run(render)
-      }
-      const WALL = 50
-      const height = Number(document.body.getAttribute('data-height'))
-      const width = Number(document.body.getAttribute('data-width'))
-      const walls = [
-        Matter.Bodies.rectangle(width / 2, height + WALL / 2, width, WALL, { isStatic: true }),
-        Matter.Bodies.rectangle(width / 2, -WALL / 2, width, WALL, { isStatic: true }),
-        Matter.Bodies.rectangle(-WALL / 2, height / 2, WALL, height, { isStatic: true }),
-        Matter.Bodies.rectangle(width + WALL / 2, height / 2, WALL, height, { isStatic: true })
-      ]
-      Matter.Composite.add(engine.world, walls)
-      this.canUpdate = true
-      Matter.Events.on(engine, 'beforeUpdate', () => {
-        this.canUpdate = false
-        const updatedBodies = beforeUpdateFuncs.map(func => func())
-        beforeUpdateFuncs = []
-        // check if the body has a ground below, else wake the body up
-        engine.world.bodies.forEach(body => {
-          if (body.isStatic) return
-          if (!body.isSleeping) return
-          if (updatedBodies.includes(body)) return
-          const { min, max } = body.bounds
-          const collisions = Matter.Query.ray(
-            engine.world.bodies.filter(
-              otherBody => otherBody !== body && !otherBody.isSensor
-            ),
-            { x: min.x + 1, y: max.y + 1 },
-            { x: max.x - 1, y: max.y + 6 }
-          )
-          if (collisions.length < 1) Matter.Sleeping.set(body, false)
-        })
+    } else {
+      this.worker = new Worker(`${this.importMetaUrl}./MatterWebWorker.js`, {type: 'module'})
+      this.worker.addEventListener('error', error => console.error('MatterWebWorker.js Error:', error))
+      this.worker.addEventListener('messageerror', error => console.error('MatterWebWorker.js message deserialization failed:', error))
+      this.worker.postMessage({
+        type: 'engineCreate',
+        options: engineCreateOptions
       })
-      Matter.Events.on(engine, 'afterUpdate', () => (this.canUpdate = true))
-      Matter.Events.on(engine, 'sleepStart', event => this.dispatchEvent(new CustomEvent(this.getAttribute('matter-sleep-start') || 'matter-sleep-start', {
-        detail: {
-          body: event.source
-        },
-        bubbles: true,
-        cancelable: true,
-        composed: true
-      })))
-      Matter.Events.on(engine, 'sleepEnd', event => this.dispatchEvent(new CustomEvent(this.getAttribute('matter-sleep-end') || 'matter-sleep-end', {
-        detail: {
-          body: event.source
-        },
-        bubbles: true,
-        cancelable: true,
-        composed: true
-      })))
-      const mouseConstraint = Matter.MouseConstraint.create(engine, {
-        element: document.body,
-        constraint: {
-          stiffness: 0.2,
-          render: {
-            visible: false
-          }
-        }
-      })
-      Matter.Composite.add(engine.world, mouseConstraint)
-      return [Matter, engine]
-    })
-
-    this.timeEventListener = event => {
-      if (this.canUpdate) {
-        this.matterEnginePromise.then(([Matter, engine]) => {
-          Matter.Engine.update(engine)
+    }
+    this.worker.onmessage = event => {
+      if (!event.data) event.data = event
+      switch (event.data.type) {
+        case 'afterUpdate':
           this.dispatchEvent(new CustomEvent(this.getAttribute('matter-bodies') || 'matter-bodies', {
             detail: {
-              bodies: engine.world.bodies
+              bodies: event.data.bodies
             },
             bubbles: true,
             cancelable: true,
             composed: true
           }))
+          break
+      }
+    }
+
+    this.addBodyEventListener = event => {
+      let webComponent = null
+      if (event && event.detail && (webComponent = event.detail.webComponent)) {
+        // add a reference pointing to the webComponent
+        this.worker.postMessage({
+          type: 'addBody',
+          oid: webComponent.getAttribute('oid') || '',
+          shape: MatterElement.getRectangle(webComponent)
         })
       }
     }
 
+    this.setBodyEventListener = event => {
+      let webComponent = null
+      if (event && event.detail && event.detail.body && (webComponent = event.detail.webComponent)) {
+        // add a reference pointing to the webComponent
+        this.worker.postMessage({
+          type: 'setBody',
+          oid: webComponent.getAttribute('oid') || '',
+          body: event.detail.body
+        })
+      }
+    }
+
+    this.removeBodyEventListener = event => {
+      /*let webComponent = null
+      if (event && event.detail && (webComponent = event.detail.webComponent) && typeof webComponent.body?.then === 'function') {
+        webComponent.body.then(body => Matter.Composite.remove(this.engine.world, body))
+      }*/
+    }
+
+    this.bodyPointerDownEventListener = event => {
+      let webComponent = null
+      if (event && event.detail && (webComponent = event.detail.webComponent)) {
+        this.worker.postMessage({
+          type: 'bodyPointerDown',
+          oid: webComponent.getAttribute('oid') || '',
+          position: event.detail.position
+        })
+      }
+    }
+    this.bodyPointerMoveEventListener = event => {
+      this.worker.postMessage({
+        type: 'bodyPointerMove',
+        position: event.detail.position
+      })
+    }
+    this.bodyPointerUpEventListener = event => {
+      this.worker.postMessage({
+        type: 'bodyPointerUp'
+      })
+    }
+
     const webComponentMap = new Map()
-    let beforeUpdateFuncs = []
     this.yjsBodiesEventListener = async event => {
-      const [Matter] = await this.matterEnginePromise
+      const bodies = []
       event.detail.keys.forEach(async ({key, isSelf, getBody}) => {
         if (isSelf) return
         const yjsBody = getBody()
+        bodies.push(yjsBody)
         let webComponent
         if (webComponentMap.has(key)) {
           webComponent = await webComponentMap.get(key)
@@ -141,7 +155,7 @@ export default class Matter extends HTMLElement {
         } else {
           let resolveWebComponent
           webComponentMap.set(key, new Promise(resolve => (resolveWebComponent = resolve)))
-          const module = await import(`${import.meta.url.replace(/(.*\/)(.*)$/, '$1')}../bodies/Rectangle.js`)
+          const module = await import(`${this.importMetaUrl}../bodies/Rectangle.js`)
           webComponent = new module.default
           webComponent.setAttribute('x', yjsBody.position.x)
           webComponent.setAttribute('y', yjsBody.position.y)
@@ -156,53 +170,31 @@ export default class Matter extends HTMLElement {
           resolveWebComponent(webComponent)
         }
         webComponent.yjsBody = yjsBody
-        const body = await webComponent.body
-        beforeUpdateFuncs.push(() => {
-          Matter.Sleeping.set(body, false)
-          Matter.Body.setAngle(body, yjsBody.angle)
-          Matter.Body.setPosition(body, yjsBody.position)
-          Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
-          Matter.Body.setVelocity(body, yjsBody.velocity)
-          return body
-        })
       })
-    }
-
-    this.addBodyEventListener = event => {
-      let webComponent = null
-      let resolveBody = null
-      if (event && event.detail && (webComponent = event.detail.webComponent) && (resolveBody = event.detail.resolveBody)) {
-        this.matterEnginePromise.then(([Matter, engine]) => {
-          // add a reference pointing to the webComponent
-          const body = Matter.Bodies.rectangle(...this.getRectangle(webComponent))
-          Matter.Composite.add(engine.world, body)
-          body.isStatic = webComponent.isStatic()
-          resolveBody(body)
-        })
-      }
-    }
-
-    this.removeBodyEventListener = event => {
-      let webComponent = null
-      if (event && event.detail && (webComponent = event.detail.webComponent) && typeof webComponent.body?.then === 'function') {
-        this.matterEnginePromise.then(([Matter, engine]) => {
-          webComponent.body.then(body => Matter.Composite.remove(engine.world, body))
-        })
-      }
+      this.worker.postMessage({
+        type: 'yjsBodies',
+        bodies
+      })
     }
   }
 
   connectedCallback () {
-    document.body.addEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.addEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
+    document.body.addEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.addEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
+    document.body.addEventListener(this.getAttribute('body-pointer-down') || 'body-pointer-down', this.bodyPointerDownEventListener)
+    document.body.addEventListener(this.getAttribute('body-pointer-move') || 'body-pointer-move', this.bodyPointerMoveEventListener)
+    document.body.addEventListener(this.getAttribute('body-pointer-up') || 'body-pointer-up', this.bodyPointerUpEventListener)
     document.body.addEventListener('yjs-bodies', this.yjsBodiesEventListener)
   }
 
   disconnectedCallback () {
-    document.body.removeEventListener(this.getAttribute('time') || 'time', this.timeEventListener)
     document.body.removeEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
+    document.body.removeEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.removeEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
+    document.body.removeEventListener(this.getAttribute('body-pointer-down') || 'body-pointer-down', this.bodyPointerDownEventListener)
+    document.body.removeEventListener(this.getAttribute('body-pointer-move') || 'body-pointer-move', this.bodyPointerMoveEventListener)
+    document.body.removeEventListener(this.getAttribute('body-pointer-up') || 'body-pointer-up', this.bodyPointerUpEventListener)
     document.body.removeEventListener('yjs-bodies', this.yjsBodiesEventListener)
   }
 
@@ -211,36 +203,14 @@ export default class Matter extends HTMLElement {
    * @param {HTMLElement} webComponent
    * @return {[number, number, number, number, {webComponent:HTMLElement}|any]}
    */
-  getRectangle (webComponent) {
+  static getRectangle (webComponent) {
     return [
       Number(webComponent.getAttribute('x')) + Number(webComponent.getAttribute('width')) / 2, // matter.js will use the coordinates for center of body but here we do adjust for top/left
       Number(webComponent.getAttribute('y')) + Number(webComponent.getAttribute('height')) / 2, // matter.js will use the coordinates for center of body but here we do adjust for top/left
       Number(webComponent.getAttribute('width')),
       Number(webComponent.getAttribute('height')),
-      { webComponent, restitution: webComponent.getAttribute('restitution') || 0.6, friction: webComponent.getAttribute('friction') || 0.1 }
+      // @ts-ignore
+      { oid: webComponent.getAttribute('oid') || '', uid: webComponent.getAttribute('uid') || '', restitution: webComponent.getAttribute('restitution') || 0.6, friction: webComponent.getAttribute('friction') || 0.1, isStatic: webComponent.isStatic() }
     ]
-  }
-
-  /**
-   * fetch dependency
-   *
-   * @returns {Promise<any>}
-   */
-  loadDependency () {
-    return this.dependencyPromise || (this.dependencyPromise = new Promise(resolve => {
-      // needs markdown
-      if ('Matter' in self === true) {
-        resolve(self.Matter) // eslint-disable-line
-      } else {
-        const matterScript = document.createElement('script')
-        matterScript.setAttribute('type', 'text/javascript')
-        matterScript.setAttribute('async', '')
-        matterScript.setAttribute('src', 'https://cdn.jsdelivr.net/npm/matter-js/build/matter.min.js')
-        matterScript.onload = () => {
-          if ('Matter' in self === true) resolve(self.Matter) // eslint-disable-line
-        }
-        document.head.appendChild(matterScript)
-      }
-    }))
   }
 }

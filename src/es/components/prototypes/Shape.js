@@ -11,6 +11,7 @@ import { Shadow } from './Shadow.js'
  * @param {CustomElementConstructor} ChosenHTMLElement
  * @return {CustomElementConstructor | *}
  */
+// TODO: Intersection Observer. Don't dispatch coordinates when not visible except for self, which is always visible...
 export class Shape extends Shadow() {
   static get observedAttributes () {
     return ['is-static', 'width', 'height']
@@ -19,7 +20,6 @@ export class Shape extends Shadow() {
   constructor (oid, ...args) {
     super(...args)
 
-    this.body = new Promise(resolve => (this.resolveBody = resolve))
     if (oid || !this.hasAttribute('oid')) this.setAttribute('oid', oid || `b_${self.crypto.randomUUID()}`)
     this.yjsBody = {}
 
@@ -29,8 +29,10 @@ export class Shape extends Shadow() {
 
     this.matterBodiesEventListener = event => {
       let body
-      if ((body = event.detail.bodies.find(body => body.webComponent === this))) {
+      if ((body = event.detail.bodies.find(body => body.oid === this.getAttribute('oid')))) {
+        this.body = body
         if (body.isSleeping) return
+        // TODO: do the request animation frame here instead of at bodies.js
         /*
         // NOTE: transform has better performance than top and left props
         top: ${body.position.y - this.getAttribute('half-height')}px;
@@ -42,7 +44,7 @@ export class Shape extends Shadow() {
             transform: translate(${(body.position.x - this.getAttribute('half-width')).toFixed(accuracy)}px, ${(body.position.y - this.getAttribute('half-height')).toFixed(accuracy)}px) rotate(${body.angle.toFixed(accuracy)}rad);
           }
         `
-        if (textContent !== this.customStyle.textContent){
+        if (textContent !== this.customStyle.textContent) {
           this.customStyle.textContent = textContent
           this.dispatchEvent(new CustomEvent(this.getAttribute('yjs-set-body') || 'yjs-set-body', {
             detail: {
@@ -70,15 +72,48 @@ export class Shape extends Shadow() {
     }
 
     this.matterSleepStartEventListener = async event => {
-      if (event.detail.body === await this.body) document.body.removeEventListener('matter-bodies', this.matterBodiesEventListener)
+      //if (event.detail.body === await this.body) document.body.removeEventListener('matter-bodies', this.matterBodiesEventListener)
     }
     this.matterSleepEndEventListener = async event => {
-      if (event.detail.body === await this.body) document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
+      //if (event.detail.body === await this.body) document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
     }
 
     this.yjsSelfUidEventListener = event => {
       this.setAttribute('uid', event.detail.uid)
       document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
+    }
+
+    this.pointerdownEventListener = event => {
+      if (!this.body) return
+      this.setPointerCapture(event.pointerId)
+      this.dispatchEvent(new CustomEvent(this.getAttribute('body-pointer-down') || 'body-pointer-down', {
+        detail: {
+          webComponent: this,
+          position: {x: event.clientX, y: event.clientY}
+        },
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }))
+    }
+    this.pointermoveEventListener = event => {
+      if (!this.hasPointerCapture(event.pointerId)) return
+      this.dispatchEvent(new CustomEvent(this.getAttribute('body-pointer-move') || 'body-pointer-move', {
+        detail: {
+          position: {x: event.clientX, y: event.clientY}
+        },
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }))
+    }
+    this.pointerupEventListener = event => {
+      this.dispatchEvent(new CustomEvent(this.getAttribute('body-pointer-up') || 'body-pointer-up', {
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }))
+      if (this.hasPointerCapture(event.pointerId)) this.releasePointerCapture(event.pointerId)
     }
   }
 
@@ -87,19 +122,24 @@ export class Shape extends Shadow() {
     // the dispatch must be after rendering
     this.dispatchEvent(new CustomEvent(this.getAttribute('add-body') || 'add-body', {
       detail: {
-        webComponent: this,
-        resolveBody: this.resolveBody
+        webComponent: this
       },
       bubbles: true,
       cancelable: true,
       composed: true
     }))
-    // TODO: Use other targets than document body, Environment.globalEventTarget or such...
-    if (!this.hasAttribute('self')) document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
     document.body.addEventListener('matter-sleep-start', this.matterSleepStartEventListener)
     document.body.addEventListener('matter-sleep-end', this.matterSleepEndEventListener)
     // todo: needs to be self only and likely better uuid as additional info
-    if (this.hasAttribute('self')) document.body.addEventListener('yjs-self-uid', this.yjsSelfUidEventListener)
+    if (this.hasAttribute('self')) {
+      document.body.addEventListener('yjs-self-uid', this.yjsSelfUidEventListener)
+      this.addEventListener('pointerdown', this.pointerdownEventListener)
+      this.addEventListener('pointermove', this.pointermoveEventListener)
+      this.addEventListener('pointerup', this.pointerupEventListener)
+    } else {
+      // TODO: Use other targets than document body, Environment.globalEventTarget or such...
+      document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
+    }
   }
 
   disconnectedCallback () {
@@ -116,23 +156,27 @@ export class Shape extends Shadow() {
       detail: {
         body: {
           isSelf: this.hasAttribute('self'),
-          oid: this.getAttribute('oid')
+          oid: this.getAttribute('oid') || ''
         }
       },
       bubbles: true,
       cancelable: true,
       composed: true
     }))
-    this.body = new Promise(resolve => (this.resolveBody = resolve))
     document.body.removeEventListener('matter-bodies', this.matterBodiesEventListener)
     document.body.removeEventListener('matter-sleep-start', this.matterSleepStartEventListener)
     document.body.removeEventListener('matter-sleep-end', this.matterSleepEndEventListener)
-    if (this.hasAttribute('self')) document.body.removeEventListener('yjs-self-uid', this.yjsSelfUidEventListener)
+    if (this.hasAttribute('self')) {
+      document.body.removeEventListener('yjs-self-uid', this.yjsSelfUidEventListener)
+      this.removeEventListener('pointerdown', this.pointerdownEventListener)
+      this.removeEventListener('pointermove', this.pointermoveEventListener)
+      this.removeEventListener('pointerup', this.pointerupEventListener)
+    }
   }
 
   attributeChangedCallback (name, oldValue, newValue) {
     if (name === 'is-static') {
-      this.body.then(body => (body.isStatic = this.isStatic()))
+      //this.body.then(body => (body.isStatic = this.isStatic()))
     } else if (name === 'width' || name === 'height') {
       this.setAttribute('half-width', this.getAttribute('width') / 2)
       this.setAttribute('half-height', this.getAttribute('height') / 2)
@@ -155,15 +199,21 @@ export class Shape extends Shadow() {
   */
   renderCSS () {
     this.css = /* css */`
+      :host, :host * {
+        -webkit-user-drag: none;
+        user-select: none;
+      }
       :host {
         background: ${this.getAttribute('background') ? this.getAttribute('background') : 'var(--background, #111)'};
-        cursor: ${this.getAttribute('cursor') ? this.getAttribute('cursor') : 'var(--cursor, move)'};
         height: ${this.getAttribute('height') ? this.getAttribute('height') + 'px' : '5px'};
         position: ${this.getAttribute('position') ? this.getAttribute('position') : 'var(--position, absolute)'};
         width: ${this.getAttribute('width') ? this.getAttribute('width') + 'px' : '5px'};
         transform-origin: center;
         opacity: var(--opacity, 1);
         transition: transform 50ms ease-out;
+      }
+      :host([self]) {
+        cursor: ${this.getAttribute('cursor') ? this.getAttribute('cursor') : 'var(--cursor, move)'};
       }
     `
   }
