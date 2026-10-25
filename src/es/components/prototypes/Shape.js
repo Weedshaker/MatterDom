@@ -31,9 +31,6 @@ export class Shape extends Shadow() {
       let body
       if ((body = event.detail.bodies.find(body => body.oid === this.getAttribute('oid')))) {
         this.body = body
-        // TODO: fix not rotating and last aligning bodies
-        if (body.isSleeping) return
-        // TODO: do the request animation frame here instead of at bodies.js
         /*
         // NOTE: transform has better performance than top and left props
         top: ${body.position.y - this.getAttribute('half-height')}px;
