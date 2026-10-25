@@ -72,6 +72,7 @@ export default class Bodies extends HTMLElement {
     }
 
     this._setBody = async () => {
+      if (!bodyEvents.size) return
       const {type: yMap, doc} = await this.yMap
       doc.transact(() => Array.from(bodyEvents).forEach(([key, value]) => yMap.set(key, value)))
       bodyEvents.clear()

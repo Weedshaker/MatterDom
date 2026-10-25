@@ -22,7 +22,7 @@ export default class MatterElement extends HTMLElement {
 
     const engineCreateOptions = {
       create: {
-        enableSleeping: true,
+        enableSleeping: true, // makes it less accurate
         gravity: {
             x: this.getAttribute('gravity-x') || 0,
             y: this.getAttribute('gravity-y') || 0.1,
