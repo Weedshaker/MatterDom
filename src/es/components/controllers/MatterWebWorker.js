@@ -95,15 +95,15 @@ export default class MatterWebWorker {
     //   }
     // }
 
-    MatterWebWorker.tick(() => {
+    this.tick(() => {
       if (this.canUpdate) Matter.Engine.update(this.engine)
     })
   }
 
-  static tick (func, time, keepRunning = true) {
+  tick (func, time, keepRunning = true) {
     this._isRunning = keepRunning
     func(time)
-    if (this._isRunning) self.requestAnimationFrame(time => MatterWebWorker.tick(func, time))
+    if (this._isRunning) self.requestAnimationFrame(time => this.tick(func, time))
   }
 
   // this is the onmessage listener within the web worker but called postMessage from the outside

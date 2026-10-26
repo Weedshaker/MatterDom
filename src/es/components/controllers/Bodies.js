@@ -59,7 +59,7 @@ export default class Bodies extends HTMLElement {
       const body = event.detail.body
       if (event.detail.isSelf) {
         bodyEvents.set(body.uid || body.oid, body)
-        if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => this._setBody())
+        if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => _setBody())
       } else if (!event.detail.webComponent.yjsBody.ctrl || event.detail.webComponent.yjsBody.ctrl.uid === await this.uid || event.detail.webComponent.yjsBody.ctrl.timestamp + 1000 < Date.now()) {
         // all bodies without a uid
         event.detail.webComponent.yjsBody.ctrl = body.ctrl = {
@@ -67,11 +67,10 @@ export default class Bodies extends HTMLElement {
           timestamp: Date.now()
         }
         bodyEvents.set(body.uid || body.oid, body)
-        if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => this._setBody())
+        if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => _setBody())
       }
     }
-
-    this._setBody = async () => {
+    const _setBody = async () => {
       if (!bodyEvents.size) return
       const {type: yMap, doc} = await this.yMap
       doc.transact(() => Array.from(bodyEvents).forEach(([key, value]) => yMap.set(key, value)))

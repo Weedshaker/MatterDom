@@ -71,20 +71,30 @@ export default class MatterElement extends HTMLElement {
         options: engineCreateOptions
       })
     }
+
+    let animationFrameId = null
+    let bodies = null
     this.worker.onmessage = event => {
       if (!event.data) event.data = event
       switch (event.data.type) {
         case 'afterUpdate':
-          this.dispatchEvent(new CustomEvent(this.getAttribute('matter-bodies') || 'matter-bodies', {
-            detail: {
-              bodies: event.data.bodies
-            },
-            bubbles: true,
-            cancelable: true,
-            composed: true
-          }))
+          bodies = event.data.bodies
+          if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => _dispatchEvent())
           break
       }
+    }
+    const _dispatchEvent = () => {
+      if (!bodies) return
+      this.dispatchEvent(new CustomEvent(this.getAttribute('matter-bodies') || 'matter-bodies', {
+        detail: {
+          bodies
+        },
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }))
+      bodies = null
+      animationFrameId = null
     }
 
     this.addBodyEventListener = event => {
