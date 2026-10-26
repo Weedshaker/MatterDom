@@ -31,6 +31,8 @@ export class Shape extends Shadow() {
       let body
       if ((body = event.detail.bodies.find(body => body.oid === this.getAttribute('oid')))) {
         this.body = body
+        const sleepingChanged = this.getAttribute('is-sleeping') !== String(body.isSleeping)
+        this.setAttribute('is-sleeping', body.isSleeping)
         /*
         // NOTE: transform has better performance than top and left props
         top: ${body.position.y - this.getAttribute('half-height')}px;
@@ -43,7 +45,7 @@ export class Shape extends Shadow() {
             transform: translate3d(${(body.position.x - this.getAttribute('half-width')).toFixed(accuracy)}px, ${(body.position.y - this.getAttribute('half-height')).toFixed(accuracy)}px, 0) rotate(${body.angle.toFixed(accuracy)}rad);
           }
         `
-        if (textContent !== this.customStyle.textContent) {
+        if (sleepingChanged || textContent !== this.customStyle.textContent) {
           this.customStyle.textContent = textContent
           this.dispatchEvent(new CustomEvent(this.getAttribute('yjs-set-body') || 'yjs-set-body', {
             detail: {
@@ -58,7 +60,8 @@ export class Shape extends Shadow() {
                 velocity: body.velocity,
                 oid: this.getAttribute('oid') || '',
                 uid: this.getAttribute('uid') || '',
-                isStatic: this.isStatic()
+                isStatic: this.isStatic(),
+                isSleeping: body.isSleeping
               },
               isSelf: this.hasAttribute('self')
             },

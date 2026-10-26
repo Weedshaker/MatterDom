@@ -114,7 +114,7 @@ export default class MatterWebWorker {
         event.data.bodies.forEach(yjsBody => {
           if (this.oidToMatterIdMap.has(yjsBody.oid)) this.beforeUpdateFuncs.push(() => {
             const body = Matter.Composite.get(this.engine.world, this.oidToMatterIdMap.get(yjsBody.oid), 'body')
-            Matter.Sleeping.set(body, false)
+            Matter.Sleeping.set(body, yjsBody.isSleeping)
             Matter.Body.setAngle(body, yjsBody.angle)
             Matter.Body.setPosition(body, yjsBody.position)
             Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
