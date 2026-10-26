@@ -157,6 +157,7 @@ export default class MatterWebWorker {
         this.dragConstraint.pointB.y = event.data.position.y
         break
       case 'bodyPointerUp':
+        if (!this.dragConstraint) return
         Matter.Composite.remove(this.engine.world, this.dragConstraint)
         this.dragConstraint = null
         break
