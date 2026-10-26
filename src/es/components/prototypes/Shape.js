@@ -217,6 +217,9 @@ export class Shape extends Shadow() {
       :host([self]) {
         cursor: ${this.getAttribute('cursor') ? this.getAttribute('cursor') : 'var(--cursor, move)'};
       }
+      :host([is-sleeping=false]) {
+        will-change: transform;
+      }
     `
   }
 
