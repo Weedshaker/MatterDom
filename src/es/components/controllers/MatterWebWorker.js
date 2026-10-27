@@ -146,11 +146,12 @@ export default class MatterWebWorker {
         event.data.bodies.forEach(yjsBody => {
           if (this.oidToMatterIdMap.has(yjsBody.oid)) this.beforeUpdateFuncs.push(() => {
             const body = Matter.Composite.get(this.engine.world, this.oidToMatterIdMap.get(yjsBody.oid), 'body')
-            Matter.Body.setAngle(body, yjsBody.angle)
-            Matter.Body.setAngularSpeed(body, yjsBody.angularSpeed)
-            Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
-            Matter.Body.setPosition(body, yjsBody.position)
-            Matter.Body.setVelocity(body, yjsBody.velocity)
+            if (!body) return null
+            if (body.angle !== yjsBody.angle) Matter.Body.setAngle(body, yjsBody.angle)
+            if (body.angularSpeed !== yjsBody.angularSpeed) Matter.Body.setAngularSpeed(body, yjsBody.angularSpeed)
+            if (body.angularVelocity !== yjsBody.angularVelocity) Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
+            if (body.position.x !== yjsBody.position.x || body.position.y !== yjsBody.position.y) Matter.Body.setPosition(body, yjsBody.position)
+            if (body.velocity !== yjsBody.velocity) Matter.Body.setVelocity(body, yjsBody.velocity)
             if (body.isStatic !== yjsBody.isStatic) Matter.Body.setStatic(body, yjsBody.isStatic)
             if (body.isSleeping !== yjsBody.isSleeping) Matter.Sleeping.set(body, yjsBody.isSleeping)
             return body

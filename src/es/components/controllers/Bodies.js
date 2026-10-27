@@ -28,7 +28,7 @@ export default class Bodies extends HTMLElement {
       const uid = await this.uid
       const keys = Array.from(event.detail.yjsEvent?.[0]?.changes?.keys || []).reduce((acc, [key]) => {
         if (!event.detail.type.has(key)) return acc
-        let yjsBody = event.detail.type.get(key)
+        const yjsBody = event.detail.type.get(key)
         if (yjsBody.uid === uid || yjsBody.ctrl?.uid === uid) return acc
         acc.push(key)
         return acc
@@ -54,17 +54,34 @@ export default class Bodies extends HTMLElement {
     const bodyEvents = new Map()
     let animationFrameId = null
     this.setBodyEventListener = async event => {
+      // TODO: also sync static bodies
       // don't deal with other user bodies as well as with static bodies
       if (!event.detail.isSelf && (event.detail.body.isStatic || event.detail.body.uid)) return
       const body = event.detail.body
-      let uid
+      let uid, isInControl
       if (event.detail.isSelf) {
         bodyEvents.set(body.uid || body.oid, body)
         if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => _setBody())
-      } else if (!event.detail.webComponent.yjsBody.ctrl || event.detail.webComponent.yjsBody.ctrl.uid === (uid = await this.uid) || event.detail.webComponent.yjsBody.ctrl.timestamp + (body.collisions.every(collision => !collision.uid || collision.uid === uid) ? 50 : 1000) < Date.now()) {
+      /*} else if (
+        !event.detail.webComponent.yjsBody.ctrl
+        || (body.collisions.some(collision => collision.uid === uid) && body.collisions.every(collision => collision.uid !== event.detail.webComponent.yjsBody.ctrl.uid))
+        || event.detail.webComponent.yjsBody.ctrl.timestamp + 1000 < Date.now()
+          ? true
+          : event.detail.webComponent.yjsBody.ctrl.timestamp + 100 > Date.now()
+            ? event.detail.webComponent.yjsBody.ctrl.uid === (uid = await this.uid)
+            : false
+      ) {*/
+      } else if (
+        (uid = await this.uid) && (
+        !event.detail.webComponent.yjsBody.ctrl
+        || !event.detail.webComponent.yjsBody.ctrl.uid
+        || (isInControl = event.detail.webComponent.yjsBody.ctrl.uid === uid)
+        || (body.collisions.some(collision => collision.uid === uid) && body.collisions.every(collision => collision.uid !== event.detail.webComponent.yjsBody.ctrl.uid))
+        || event.detail.webComponent.yjsBody.ctrl.timestamp + 1000 < Date.now()
+      )) {
         // all bodies without a uid
         event.detail.webComponent.yjsBody.ctrl = body.ctrl = {
-          uid: await this.uid,
+          uid: isInControl && event.detail.webComponent.yjsBody.ctrl.timestamp + 50 < Date.now() ? undefined : uid,
           timestamp: Date.now()
         }
         bodyEvents.set(body.uid || body.oid, body)
