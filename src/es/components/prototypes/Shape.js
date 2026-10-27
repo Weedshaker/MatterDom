@@ -32,7 +32,7 @@ export class Shape extends Shadow() {
       if ((body = event.detail.bodies.find(body => body.oid === this.getAttribute('oid')))) {
         this.body = body
         const sleepingChanged = this.getAttribute('is-sleeping') !== String(body.isSleeping)
-        this.setAttribute('is-sleeping', body.isSleeping)
+        if (sleepingChanged) this.setAttribute('is-sleeping', body.isSleeping)
         /*
         // NOTE: transform has better performance than top and left props
         top: ${body.position.y - this.getAttribute('half-height')}px;

@@ -58,30 +58,20 @@ export default class Bodies extends HTMLElement {
       // don't deal with other user bodies as well as with static bodies
       if (!event.detail.isSelf && (event.detail.body.isStatic || event.detail.body.uid)) return
       const body = event.detail.body
-      let uid, isInControl
+      let uid
       if (event.detail.isSelf) {
         bodyEvents.set(body.uid || body.oid, body)
         if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => _setBody())
-      /*} else if (
-        !event.detail.webComponent.yjsBody.ctrl
-        || (body.collisions.some(collision => collision.uid === uid) && body.collisions.every(collision => collision.uid !== event.detail.webComponent.yjsBody.ctrl.uid))
-        || event.detail.webComponent.yjsBody.ctrl.timestamp + 1000 < Date.now()
-          ? true
-          : event.detail.webComponent.yjsBody.ctrl.timestamp + 100 > Date.now()
-            ? event.detail.webComponent.yjsBody.ctrl.uid === (uid = await this.uid)
-            : false
-      ) {*/
       } else if (
         (uid = await this.uid) && (
         !event.detail.webComponent.yjsBody.ctrl
-        || !event.detail.webComponent.yjsBody.ctrl.uid
-        || (isInControl = event.detail.webComponent.yjsBody.ctrl.uid === uid)
+        || event.detail.webComponent.yjsBody.ctrl.uid === uid
         || (body.collisions.some(collision => collision.uid === uid) && body.collisions.every(collision => collision.uid !== event.detail.webComponent.yjsBody.ctrl.uid))
         || event.detail.webComponent.yjsBody.ctrl.timestamp + 1000 < Date.now()
       )) {
         // all bodies without a uid
         event.detail.webComponent.yjsBody.ctrl = body.ctrl = {
-          uid: isInControl && event.detail.webComponent.yjsBody.ctrl.timestamp + 50 < Date.now() ? undefined : uid,
+          uid,
           timestamp: Date.now()
         }
         bodyEvents.set(body.uid || body.oid, body)
