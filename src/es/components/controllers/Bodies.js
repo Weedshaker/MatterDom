@@ -57,10 +57,11 @@ export default class Bodies extends HTMLElement {
       // don't deal with other user bodies as well as with static bodies
       if (!event.detail.isSelf && (event.detail.body.isStatic || event.detail.body.uid)) return
       const body = event.detail.body
+      let uid
       if (event.detail.isSelf) {
         bodyEvents.set(body.uid || body.oid, body)
         if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => _setBody())
-      } else if (!event.detail.webComponent.yjsBody.ctrl || event.detail.webComponent.yjsBody.ctrl.uid === await this.uid || event.detail.webComponent.yjsBody.ctrl.timestamp + 1000 < Date.now()) {
+      } else if (!event.detail.webComponent.yjsBody.ctrl || event.detail.webComponent.yjsBody.ctrl.uid === (uid = await this.uid) || event.detail.webComponent.yjsBody.ctrl.timestamp + (body.collisions.every(collision => !collision.uid || collision.uid === uid) ? 50 : 1000) < Date.now()) {
         // all bodies without a uid
         event.detail.webComponent.yjsBody.ctrl = body.ctrl = {
           uid: await this.uid,

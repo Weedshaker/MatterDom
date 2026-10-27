@@ -29,11 +29,12 @@ export default class MatterWebWorker {
     const WALL = 50
     const height = options.walls.height
     const width = options.walls.width
+    // TODO: set walls through the general function which adds props like collisions
     const walls = [
-      Matter.Bodies.rectangle(width / 2, height + WALL / 2, width, WALL, { isStatic: true }),
-      Matter.Bodies.rectangle(width / 2, -WALL / 2, width, WALL, { isStatic: true }),
-      Matter.Bodies.rectangle(-WALL / 2, height / 2, WALL, height, { isStatic: true }),
-      Matter.Bodies.rectangle(width + WALL / 2, height / 2, WALL, height, { isStatic: true })
+      Matter.Bodies.rectangle(width / 2, height + WALL / 2, width, WALL, { isStatic: true, collisions: [] }),
+      Matter.Bodies.rectangle(width / 2, -WALL / 2, width, WALL, { isStatic: true, collisions: [] }),
+      Matter.Bodies.rectangle(-WALL / 2, height / 2, WALL, height, { isStatic: true, collisions: [] }),
+      Matter.Bodies.rectangle(width + WALL / 2, height / 2, WALL, height, { isStatic: true, collisions: [] })
     ]
     Matter.Composite.add(this.engine.world, walls)
     this.beforeUpdateFuncs = []
@@ -42,26 +43,56 @@ export default class MatterWebWorker {
       this.canUpdate = false
       const updatedBodies = this.beforeUpdateFuncs.map(func => func())
       this.beforeUpdateFuncs = []
-      // check if the body has a ground below, else wake the body up
-      this.engine.world.bodies.forEach(body => {
-        if (body.isStatic) return
-        if (!body.isSleeping) return
-        if (updatedBodies.includes(body)) return
-        const { min, max } = body.bounds
-        const collisions = Matter.Query.ray(
-          this.engine.world.bodies.filter(
-            otherBody => otherBody !== body && !otherBody.isSensor
-          ),
-          { x: min.x + 1, y: max.y + 1 },
-          { x: max.x - 1, y: max.y + 6 }
-        )
-        if (collisions.length < 1) Matter.Sleeping.set(body, false)
-      })
     })
     Matter.Events.on(this.engine, 'afterUpdate', () => {
-      this.onmessage({ type: 'afterUpdate', bodies: this.engine.world.bodies })
+      this.onmessage({
+        type: 'afterUpdate',
+        bodies: this.engine.world.bodies.map(body => ({
+          angle: body.angle,
+          angularSpeed: body.angularSpeed,
+          angularVelocity: body.angularVelocity,
+          position: body.position,
+          velocity: body.velocity,
+          oid: body.oid,
+          uid: body.uid,
+          isStatic: body.isStatic,
+          isSleeping: body.isSleeping,
+          collisions: body.collisions
+        }))
+      })
       this.canUpdate = true
     })
+    Matter.Events.on(this.engine, 'collisionStart', event => {
+      for (const pair of event.pairs) {
+        const { bodyA, bodyB } = pair
+        if (bodyA.isSensor || bodyB.isSensor) continue
+        bodyA.collisions.unshift({
+          oid: bodyB.oid,
+          uid: bodyB.uid,
+          isGround: pair.collision.normal.y < -0.5
+        })
+        bodyB.collisions.unshift({
+          oid: bodyA.oid,
+          uid: bodyA.uid,
+          isGround: pair.collision.normal.y > 0.5
+        })
+      }
+    })
+    const spliceCollision = (collisions, oid) => {
+      const index = collisions.findIndex(collision => collision.oid === oid)
+      if (index !== -1) collisions.splice(index, 1)
+    }
+    Matter.Events.on(this.engine, 'collisionEnd', event => {
+      for (const pair of event.pairs) {
+        const { bodyA, bodyB } = pair
+        spliceCollision(bodyA.collisions, bodyB.oid)
+        spliceCollision(bodyB.collisions, bodyA.oid)
+        if (bodyA.isSleeping && !bodyA.collisions.some(collision => collision.isGround)) Matter.Sleeping.set(bodyA, false)
+        if (bodyB.isSleeping && !bodyB.collisions.some(collision => collision.isGround)) Matter.Sleeping.set(bodyB, false)
+      }
+    })
+
+    // NOTE: sleepStart is a body event, not an engine event.
     // Matter.Events.on(this.engine, 'sleepStart', event => this.dispatchEvent(new CustomEvent('matter-sleep-start', {
     //   detail: {
     //     body: event.source
@@ -86,6 +117,7 @@ export default class MatterWebWorker {
       this.oidToMatterIdMap.set(event.data.oid, body.id)
     }
 
+    // TODO: on remove also remove this body as a collision!
     // this.removeBodyEventListener = event => {
     //   let webComponent = null
     //   if (event && event.detail && (webComponent = event.detail.webComponent) && typeof webComponent.body?.then === 'function') {
@@ -114,11 +146,13 @@ export default class MatterWebWorker {
         event.data.bodies.forEach(yjsBody => {
           if (this.oidToMatterIdMap.has(yjsBody.oid)) this.beforeUpdateFuncs.push(() => {
             const body = Matter.Composite.get(this.engine.world, this.oidToMatterIdMap.get(yjsBody.oid), 'body')
-            Matter.Sleeping.set(body, yjsBody.isSleeping)
             Matter.Body.setAngle(body, yjsBody.angle)
-            Matter.Body.setPosition(body, yjsBody.position)
+            Matter.Body.setAngularSpeed(body, yjsBody.angularSpeed)
             Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
+            Matter.Body.setPosition(body, yjsBody.position)
             Matter.Body.setVelocity(body, yjsBody.velocity)
+            if (body.isStatic !== yjsBody.isStatic) Matter.Body.setStatic(body, yjsBody.isStatic)
+            if (body.isSleeping !== yjsBody.isSleeping) Matter.Sleeping.set(body, yjsBody.isSleeping)
             return body
           })
         })
@@ -126,14 +160,6 @@ export default class MatterWebWorker {
       case 'addBody':
         this.addBodyEventListener(event)
         break
-      case 'setBody':
-        // yjsBody from Shape.js on drag
-        if (this.oidToMatterIdMap.has(event.data.body.oid)) this.beforeUpdateFuncs.push(() => {
-          const body = Matter.Composite.get(this.engine.world, this.oidToMatterIdMap.get(event.data.body.oid), 'body')
-          Matter.Sleeping.set(body, false)
-          Matter.Body.setPosition(body, event.data.body.position)
-          return body
-        })
       case 'bodyPointerDown':
         if (this.dragConstraint) Matter.Composite.remove(this.engine.world, this.dragConstraint)
         const bodyA = Matter.Composite.get(this.engine.world, this.oidToMatterIdMap.get(event.data.oid), 'body')

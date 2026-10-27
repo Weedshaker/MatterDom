@@ -54,14 +54,13 @@ export class Shape extends Shadow() {
                 angle: body.angle,
                 angularSpeed: body.angularSpeed,
                 angularVelocity: body.angularVelocity,
-                force: body.force,
                 position: body.position,
-                positionImpulse: body.positionImpulse,
                 velocity: body.velocity,
-                oid: this.getAttribute('oid') || '',
-                uid: this.getAttribute('uid') || '',
-                isStatic: this.isStatic(),
-                isSleeping: body.isSleeping
+                oid: this.getAttribute('oid') || body.oid || '',
+                uid: this.getAttribute('uid') || body.uid || '',
+                isStatic: this.isStatic() || body.isStatic || false,
+                isSleeping: body.isSleeping,
+                collisions: body.collisions
               },
               isSelf: this.hasAttribute('self')
             },
@@ -83,6 +82,15 @@ export class Shape extends Shadow() {
     this.yjsSelfUidEventListener = event => {
       this.setAttribute('uid', event.detail.uid)
       document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
+      // the dispatch must be after rendering
+      this.dispatchEvent(new CustomEvent(this.getAttribute('add-body') || 'add-body', {
+        detail: {
+          webComponent: this
+        },
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }))
     }
 
     this.pointerdownEventListener = event => {
@@ -121,15 +129,6 @@ export class Shape extends Shadow() {
 
   connectedCallback () {
     if (this.shouldRenderCSS()) this.renderCSS()
-    // the dispatch must be after rendering
-    this.dispatchEvent(new CustomEvent(this.getAttribute('add-body') || 'add-body', {
-      detail: {
-        webComponent: this
-      },
-      bubbles: true,
-      cancelable: true,
-      composed: true
-    }))
     document.body.addEventListener('matter-sleep-start', this.matterSleepStartEventListener)
     document.body.addEventListener('matter-sleep-end', this.matterSleepEndEventListener)
     // todo: needs to be self only and likely better uuid as additional info
@@ -141,6 +140,15 @@ export class Shape extends Shadow() {
     } else {
       // TODO: Use other targets than document body, Environment.globalEventTarget or such...
       document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
+      // the dispatch must be after rendering
+      this.dispatchEvent(new CustomEvent(this.getAttribute('add-body') || 'add-body', {
+        detail: {
+          webComponent: this
+        },
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }))
     }
   }
 

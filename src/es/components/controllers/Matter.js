@@ -109,18 +109,6 @@ export default class MatterElement extends HTMLElement {
       }
     }
 
-    this.setBodyEventListener = event => {
-      let webComponent = null
-      if (event && event.detail && event.detail.body && (webComponent = event.detail.webComponent)) {
-        // add a reference pointing to the webComponent
-        this.worker.postMessage({
-          type: 'setBody',
-          oid: webComponent.getAttribute('oid') || '',
-          body: event.detail.body
-        })
-      }
-    }
-
     this.removeBodyEventListener = event => {
       /*let webComponent = null
       if (event && event.detail && (webComponent = event.detail.webComponent) && typeof webComponent.body?.then === 'function') {
@@ -190,7 +178,6 @@ export default class MatterElement extends HTMLElement {
 
   connectedCallback () {
     document.body.addEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
-    document.body.addEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.addEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
     document.body.addEventListener(this.getAttribute('body-pointer-down') || 'body-pointer-down', this.bodyPointerDownEventListener)
     document.body.addEventListener(this.getAttribute('body-pointer-move') || 'body-pointer-move', this.bodyPointerMoveEventListener)
@@ -200,7 +187,6 @@ export default class MatterElement extends HTMLElement {
 
   disconnectedCallback () {
     document.body.removeEventListener(this.getAttribute('add-body') || 'add-body', this.addBodyEventListener)
-    document.body.removeEventListener(this.getAttribute('set-body') || 'set-body', this.setBodyEventListener)
     document.body.removeEventListener(this.getAttribute('remove-body') || 'remove-body', this.removeBodyEventListener)
     document.body.removeEventListener(this.getAttribute('body-pointer-down') || 'body-pointer-down', this.bodyPointerDownEventListener)
     document.body.removeEventListener(this.getAttribute('body-pointer-move') || 'body-pointer-move', this.bodyPointerMoveEventListener)
@@ -220,7 +206,15 @@ export default class MatterElement extends HTMLElement {
       Number(webComponent.getAttribute('width')),
       Number(webComponent.getAttribute('height')),
       // @ts-ignore
-      { oid: webComponent.getAttribute('oid') || '', uid: webComponent.getAttribute('uid') || '', restitution: webComponent.getAttribute('restitution') || 0.6, friction: webComponent.getAttribute('friction') || 0.1, isStatic: webComponent.isStatic() }
+      {
+        oid: webComponent.getAttribute('oid') || '',
+        uid: webComponent.getAttribute('uid') || '',
+        restitution: webComponent.getAttribute('restitution') || 0.6,
+        friction: webComponent.getAttribute('friction') || 0.1,
+        // @ts-ignore
+        isStatic: webComponent.isStatic(),
+        collisions: []
+      }
     ]
   }
 }
