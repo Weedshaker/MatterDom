@@ -1,7 +1,8 @@
 // @ts-check
 
+import { WebWorker } from '../prototypes/WebWorker.js'
 
-export default class Bodies extends HTMLElement {
+export default class Bodies extends WebWorker() {
   /**
    * Creates an instance of yjs users. The constructor will be called for every custom element using this class when initially created.
    *
@@ -66,7 +67,7 @@ export default class Bodies extends HTMLElement {
         (uid = await this.uid) && (
         !event.detail.webComponent.yjsBody.ctrl
         || event.detail.webComponent.yjsBody.ctrl.uid === uid
-        || (body.collisions.some(collision => collision.uid === uid) && body.collisions.every(collision => collision.uid !== event.detail.webComponent.yjsBody.ctrl.uid))
+        || await this.webWorker(detectCollision, body.collisions, uid, event.detail.webComponent.yjsBody.ctrl.uid)
         || event.detail.webComponent.yjsBody.ctrl.timestamp + 1000 < Date.now()
       )) {
         // all bodies without a uid
@@ -77,6 +78,9 @@ export default class Bodies extends HTMLElement {
         bodyEvents.set(body.uid || body.oid, body)
         if (!animationFrameId) animationFrameId = self.requestAnimationFrame(timestamp => _setBody())
       }
+    }
+    const detectCollision = (collisions, selfUid, otherUid) => {
+      return (collisions.some(collision => collision.uid === selfUid) && collisions.every(collision => collision.uid !== otherUid))
     }
     const _setBody = async () => {
       if (!bodyEvents.size) return

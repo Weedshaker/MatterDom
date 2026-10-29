@@ -1,7 +1,7 @@
 // @ts-check
 /* global self */
 
-import { Shadow } from './Shadow.js'
+import { Intersection } from './Intersection.js'
 
 /**
  * Shape is a helper for any type of body
@@ -11,17 +11,17 @@ import { Shadow } from './Shadow.js'
  * @param {CustomElementConstructor} ChosenHTMLElement
  * @return {CustomElementConstructor | *}
  */
-// TODO: Intersection Observer. Don't dispatch coordinates when not visible except for self, which is always visible...
-export class Shape extends Shadow() {
+export class Shape extends Intersection() {
   static get observedAttributes () {
     return ['is-static', 'width', 'height']
   }
 
   constructor (oid, ...args) {
-    super(...args)
+    super({ intersectionObserverInit: {rootMargin: '0px 0px 0px 0px'} }, ...args)
 
     if (oid || !this.hasAttribute('oid')) this.setAttribute('oid', oid || `b_${self.crypto.randomUUID()}`)
     this.yjsBody = {}
+    this.isIntersecting = this.hasAttribute('self')
 
     this.html = this.customStyle
     this.copyPropertiesToAttributes()
@@ -47,12 +47,11 @@ export class Shape extends Shadow() {
         `
         if (sleepingChanged || textContent !== this.customStyle.textContent) {
           this.customStyle.textContent = textContent
-          this.dispatchEvent(new CustomEvent(this.getAttribute('yjs-set-body') || 'yjs-set-body', {
+          if (this.isIntersecting) this.dispatchEvent(new CustomEvent(this.getAttribute('yjs-set-body') || 'yjs-set-body', {
             detail: {
               webComponent: this,
               body: {
                 angle: body.angle,
-                angularSpeed: body.angularSpeed,
                 angularVelocity: body.angularVelocity,
                 position: body.position,
                 velocity: body.velocity,
@@ -62,7 +61,8 @@ export class Shape extends Shadow() {
                 isSleeping: body.isSleeping,
                 collisions: body.collisions
               },
-              isSelf: this.hasAttribute('self')
+              isSelf: this.hasAttribute('self'),
+              isIntersecting: this.isIntersecting
             },
             bubbles: true,
             cancelable: true,
@@ -138,6 +138,7 @@ export class Shape extends Shadow() {
       this.addEventListener('pointermove', this.pointermoveEventListener)
       this.addEventListener('pointerup', this.pointerupEventListener)
     } else {
+      super.connectedCallback()
       // TODO: Use other targets than document body, Environment.globalEventTarget or such...
       document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
       // the dispatch must be after rendering
@@ -181,6 +182,8 @@ export class Shape extends Shadow() {
       this.removeEventListener('pointerdown', this.pointerdownEventListener)
       this.removeEventListener('pointermove', this.pointermoveEventListener)
       this.removeEventListener('pointerup', this.pointerupEventListener)
+    } else {
+      super.disconnectedCallback()
     }
   }
 
@@ -191,6 +194,10 @@ export class Shape extends Shadow() {
       this.setAttribute('half-width', this.getAttribute('width') / 2)
       this.setAttribute('half-height', this.getAttribute('height') / 2)
     }
+  }
+
+  intersectionCallback (entries, observer) {
+    this.isIntersecting = this.areEntriesIntersecting(entries)
   }
 
   /**

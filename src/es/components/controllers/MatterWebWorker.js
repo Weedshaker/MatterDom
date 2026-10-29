@@ -49,7 +49,6 @@ export default class MatterWebWorker {
         type: 'afterUpdate',
         bodies: this.engine.world.bodies.map(body => ({
           angle: body.angle,
-          angularSpeed: body.angularSpeed,
           angularVelocity: body.angularVelocity,
           position: body.position,
           velocity: body.velocity,
@@ -148,7 +147,6 @@ export default class MatterWebWorker {
             const body = Matter.Composite.get(this.engine.world, this.oidToMatterIdMap.get(yjsBody.oid), 'body')
             if (!body) return null
             if (body.angle !== yjsBody.angle) Matter.Body.setAngle(body, yjsBody.angle)
-            if (body.angularSpeed !== yjsBody.angularSpeed) Matter.Body.setAngularSpeed(body, yjsBody.angularSpeed)
             if (body.angularVelocity !== yjsBody.angularVelocity) Matter.Body.setAngularVelocity(body, yjsBody.angularVelocity)
             if (body.position.x !== yjsBody.position.x || body.position.y !== yjsBody.position.y) Matter.Body.setPosition(body, yjsBody.position)
             if (body.velocity !== yjsBody.velocity) Matter.Body.setVelocity(body, yjsBody.velocity)
