@@ -91,27 +91,13 @@ export default class MatterWebWorker {
       }
     })
 
-    // NOTE: sleepStart is a body event, not an engine event.
-    // Matter.Events.on(this.engine, 'sleepStart', event => this.dispatchEvent(new CustomEvent('matter-sleep-start', {
-    //   detail: {
-    //     body: event.source
-    //   },
-    //   bubbles: true,
-    //   cancelable: true,
-    //   composed: true
-    // })))
-    // Matter.Events.on(this.engine, 'sleepEnd', event => this.dispatchEvent(new CustomEvent('matter-sleep-end', {
-    //   detail: {
-    //     body: event.source
-    //   },
-    //   bubbles: true,
-    //   cancelable: true,
-    //   composed: true
-    // })))
-
     this.oidToMatterIdMap = new Map()
     this.addBodyEventListener = event => {
       const body = Matter.Bodies.rectangle(...event.data.shape)
+      Matter.Events.on(body, 'sleepStart', event => {
+        if (body.isStatic) return
+        if (!body.collisions.some(collision => collision.isGround)) Matter.Sleeping.set(body, false)
+      })
       Matter.Composite.add(this.engine.world, body)
       this.oidToMatterIdMap.set(event.data.oid, body.id)
     }
