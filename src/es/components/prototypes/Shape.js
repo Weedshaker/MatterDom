@@ -80,7 +80,9 @@ export class Shape extends Intersection() {
     }
 
     this.yjsSelfUidEventListener = event => {
+      // TODO: has uid === client controller shall be something more flexible for multiple bodies
       this.setAttribute('uid', event.detail.uid)
+      this.setAttribute('oid', event.detail.uid)
       document.body.addEventListener('matter-bodies', this.matterBodiesEventListener)
       // the dispatch must be after rendering
       this.dispatchEvent(new CustomEvent(this.getAttribute('add-body') || 'add-body', {

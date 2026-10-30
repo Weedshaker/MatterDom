@@ -1,0 +1,858 @@
+<!-- https://euria.infomaniak.com/ -->
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    display: grid;
+    place-items: center;
+    height: 100vh;
+    margin: 0;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .stage {
+    position: relative;
+    width: 300px;
+    height: 540px;
+    display: grid;
+    place-items: center;
+  }
+
+  .character {
+    position: relative;
+    width: 160px;
+    height: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .smiley {
+    width: 120px;
+    height: 120px;
+    background: #ffd93d;
+    border-radius: 50%;
+    position: relative;
+    cursor: pointer;
+    box-shadow: 0 0 30px rgba(255, 217, 61, 0.4), 0 4px 12px rgba(0,0,0,.3);
+    transition: transform .15s, box-shadow .3s, background .4s;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    z-index: 2;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .smiley:hover {
+    box-shadow: 0 0 50px rgba(255, 217, 61, 0.7), 0 0 80px rgba(255, 217, 61, 0.3), 0 4px 12px rgba(0,0,0,.3);
+  }
+
+  .smiley:active { transform: scale(.92); }
+
+  .hair {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 40px;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .hair .strand {
+    position: absolute;
+    background: #8b4513;
+    border-radius: 50% 50% 0 0;
+  }
+
+  .hair .strand:nth-child(1) { width: 30px; height: 35px; left: 5px; top: 5px; transform: rotate(-15deg); }
+  .hair .strand:nth-child(2) { width: 35px; height: 40px; left: 30px; top: 0; }
+  .hair .strand:nth-child(3) { width: 35px; height: 38px; left: 55px; top: 2px; transform: rotate(10deg); }
+  .hair .strand:nth-child(4) { width: 28px; height: 32px; left: 75px; top: 8px; transform: rotate(20deg); }
+
+  .hair .bang {
+    position: absolute;
+    width: 100px;
+    height: 18px;
+    background: #8b4513;
+    border-radius: 0 0 50% 50%;
+    top: 25px;
+    left: 0;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    10% { transform: translate(-4px, 2px) rotate(-2deg); }
+    20% { transform: translate(4px, -2px) rotate(2deg); }
+    30% { transform: translate(-3px, 3px) rotate(-1deg); }
+    40% { transform: translate(3px, -3px) rotate(1deg); }
+    50% { transform: translate(-2px, 1px) rotate(0deg); }
+    60% { transform: translate(2px, -1px) rotate(0deg); }
+    70% { transform: translate(-1px, 1px) rotate(0deg); }
+    80% { transform: translate(1px, -1px) rotate(0deg); }
+    90% { transform: translate(0, 0) rotate(0deg); }
+  }
+
+  .stage.shake { animation: shake .5s ease; }
+
+  .eye {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: #333;
+    border-radius: 50%;
+    top: 42px;
+    transition: all .15s ease;
+    z-index: 4;
+  }
+
+  .eye.left  { left: 30px; }
+  .eye.right { right: 30px; }
+
+  .mouth {
+    position: absolute;
+    width: 40px;
+    height: 20px;
+    border-bottom: 4px solid #333;
+    border-radius: 0 0 50% 50%;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: all .2s;
+    z-index: 4;
+  }
+
+  .tongue {
+    position: absolute;
+    width: 20px;
+    height: 0;
+    background: linear-gradient(180deg, #ff6b81, #ff4757);
+    border-radius: 0 0 10px 10px;
+    top: 92px;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: height .25s cubic-bezier(.68,-.55,.27,1.55);
+    z-index: 1;
+  }
+
+  .smiley.winking .eye.right { height: 4px; border-radius: 2px; top: 48px; }
+  .smiley.tongue-out .tongue { height: 26px; }
+
+  .pixel-body {
+    position: relative;
+    margin-top: -6px;
+    z-index: 0;
+  }
+
+  .pixel-body .px {
+    width: 4px;
+    height: 4px;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .lifeguard-body { width: 84px; height: 128px; }
+  .driver-body { width: 84px; height: 128px; display: none; }
+
+  .character.shit-mode .lifeguard-body { display: none; }
+  .character.shit-mode .driver-body { display: block; }
+
+  .smiley.shit {
+    background: transparent;
+    box-shadow: none;
+    font-size: 100px;
+    line-height: 120px;
+    text-align: center;
+    animation: float 3s ease-in-out infinite, stink-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes stink-pulse {
+    0%, 100% { filter: drop-shadow(0 0 8px rgba(100, 80, 40, 0.5)); }
+    50% { filter: drop-shadow(0 0 20px rgba(100, 80, 40, 0.8)); }
+  }
+
+  .smiley.shit:hover { box-shadow: none; }
+  .smiley.shit .eye, .smiley.shit .mouth, .smiley.shit .hair { display: none; }
+  .smiley.shit .tongue { top: 92px; width: 18px; }
+  .smiley.shit.tongue-out .tongue { height: 24px; }
+
+  @keyframes shit-wink {
+    0%   { transform: rotate(0deg) scale(1); }
+    15%  { transform: rotate(-25deg) scale(1.1); }
+    30%  { transform: rotate(0deg) scale(1); }
+    45%  { transform: rotate(20deg) scale(1.08); }
+    60%  { transform: rotate(-5deg) scale(1.02); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+
+  .smiley.shit.winking { animation: shit-wink .5s ease; }
+
+  .particle {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+    animation: particle-fly .8s ease-out forwards;
+  }
+
+  @keyframes particle-fly {
+    0% { opacity: 1; transform: translate(0, 0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0); }
+  }
+
+  .stink-line {
+    position: absolute;
+    width: 3px;
+    background: rgba(150, 130, 80, 0.7);
+    border-radius: 2px;
+    animation: stink-rise 1.5s ease-out forwards;
+    pointer-events: none;
+  }
+
+  @keyframes stink-rise {
+    0% { opacity: 0.8; transform: translateY(0) scaleY(1); }
+    100% { opacity: 0; transform: translateY(-60px) scaleY(1.5); }
+  }
+
+  .sparkle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: #fff;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: sparkle-pop .6s ease-out forwards;
+  }
+
+  @keyframes sparkle-pop {
+    0% { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0); }
+  }
+
+  .progress-ring {
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: rgba(255, 217, 61, 0.6);
+    animation: spin 1s linear infinite;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+    top: 10px;
+  }
+
+  .progress-ring.visible { opacity: 1; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .bg-star {
+    position: fixed;
+    width: 2px;
+    height: 2px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 50%;
+    animation: twinkle 3s ease-in-out infinite;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.8; }
+  }
+
+  .sound-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    z-index: 100;
+    transition: background .2s;
+  }
+
+  .sound-toggle:hover { background: rgba(255,255,255,0.2); }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="progress-ring" id="ring"></div>
+  <div class="character" id="char">
+    <div class="smiley" id="s">
+      <div class="hair">
+        <div class="strand"></div>
+        <div class="strand"></div>
+        <div class="strand"></div>
+        <div class="strand"></div>
+        <div class="bang"></div>
+      </div>
+      <div class="eye left"></div>
+      <div class="eye right"></div>
+      <div class="mouth"></div>
+      <div class="tongue"></div>
+    </div>
+    <div class="pixel-body lifeguard-body" id="lifeguardBody"></div>
+    <div class="pixel-body driver-body" id="driverBody"></div>
+  </div>
+</div>
+
+<button class="sound-toggle" id="soundBtn">🔊 Music</button>
+
+<script>
+  const s = document.getElementById('s');
+  const char = document.getElementById('char');
+  const stage = document.getElementById('stage');
+  const ring = document.getElementById('ring');
+  let clickTimer = null;
+  let hoverCount = 0;
+  let ctx = null;
+  let musicPlaying = false;
+  let musicTimeout = null;
+
+  for (let i = 0; i < 40; i++) {
+    const star = document.createElement('div');
+    star.className = 'bg-star';
+    star.style.left = Math.random() * 100 + 'vw';
+    star.style.top = Math.random() * 100 + 'vh';
+    star.style.animationDelay = Math.random() * 3 + 's';
+    star.style.width = star.style.height = (1 + Math.random() * 2) + 'px';
+    document.body.appendChild(star);
+  }
+
+  // ============ BAYWATCH THEME ============
+  // The iconic "Oh-oh-oh-oh" synth hook
+  // Key: E major, ~126 BPM, driving 8th-note rhythm
+
+  const BPM = 126;
+  const spb = 60 / BPM;
+  const sp8 = spb / 2;
+
+  const N = {
+    E2:82.41, G2:98.00, A2:110.00, B2:123.47,
+    Ds3:155.56, E3:164.81, F3:174.61, Fs3:185.00, G3:196.00,
+    A3:220.00, B3:246.94,
+    Ds4:311.13, E4:329.63, F4:349.23, Fs4:369.99,
+    G4:392.00, Gs4:415.30, A4:440.00, B4:493.88,
+    C5:523.25, Ds5:622.25, E5:659.25, Fs5:739.99,
+    G5:783.99, Gs5:830.61, A5:880.00, B5:987.77
+  };
+
+  // Main "Oh-oh-oh-oh" hook: 8 bars
+  // Each entry: [freq, duration in 8th notes]
+  const leadMelody = [
+    // Bar 1: E E E E
+    [N.E4,2],[N.E4,2],[N.E4,2],[N.E4,2],
+    // Bar 2: E G# B E5
+    [N.E4,2],[N.Gs4,2],[N.B4,2],[N.E5,2],
+    // Bar 3: D5 B G# E
+    [N.Ds5,2],[N.B4,2],[N.Gs4,2],[N.E4,2],
+    // Bar 4: E G# B E5
+    [N.E4,2],[N.Gs4,2],[N.B4,2],[N.E5,2],
+    // Bar 5: Fs D5 B G#
+    [N.Fs5,2],[N.Ds5,2],[N.B4,2],[N.Gs4,2],
+    // Bar 6: E G# B E5
+    [N.E4,2],[N.Gs4,2],[N.B4,2],[N.E5,2],
+    // Bar 7: D5 B G# E
+    [N.Ds5,2],[N.B4,2],[N.Gs4,2],[N.E4,2],
+    // Bar 8: E E (hold)
+    [N.E4,4],[N.E4,4],
+  ];
+
+  // Bass: driving 8th notes, root pumping
+  const bassLine = [
+    N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,
+    N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,
+    N.Ds3,N.Ds3,N.Ds3,N.Ds3,N.Ds3,N.Ds3,N.Ds3,N.Ds3,
+    N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,
+    N.Fs3,N.Fs3,N.Fs3,N.Fs3,N.Fs3,N.Fs3,N.Fs3,N.Fs3,
+    N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,
+    N.Ds3,N.Ds3,N.Ds3,N.Ds3,N.Ds3,N.Ds3,N.Ds3,N.Ds3,
+    N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,N.E2,
+  ];
+
+  // Arp: 16th notes, bright
+  const arpNotes = [
+    N.E4,N.B4,N.E5,N.B4,N.E4,N.B4,N.E5,N.B4,
+    N.E4,N.B4,N.E5,N.B4,N.E4,N.B4,N.E5,N.B4,
+    N.Ds4,N.A4,N.Ds5,N.A4,N.Ds4,N.A4,N.Ds5,N.A4,
+    N.E4,N.B4,N.E5,N.B4,N.E4,N.B4,N.E5,N.B4,
+    N.Fs4,N.C5,N.Fs5,N.C5,N.Fs4,N.C5,N.Fs5,N.C5,
+    N.E4,N.B4,N.E5,N.B4,N.E4,N.B4,N.E5,N.B4,
+    N.Ds4,N.A4,N.Ds5,N.A4,N.Ds4,N.A4,N.Ds5,N.A4,
+    N.E4,N.B4,N.E5,N.B4,N.E4,N.B4,N.E5,N.B4,
+  ];
+
+  function playKick(c, t) {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+    g.gain.setValueAtTime(0.25, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    osc.connect(g).connect(c.destination);
+    osc.start(t); osc.stop(t + 0.15);
+  }
+
+  function playSnare(c, t) {
+    const len = c.sampleRate * 0.08;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len,2);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const g = c.createGain();
+    g.gain.value = 0.1;
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = 3000; f.Q.value = 1;
+    src.connect(f).connect(g).connect(c.destination);
+    src.start(t);
+  }
+
+  function playHiHat(c, t, accent) {
+    const len = c.sampleRate * 0.025;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len,3);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const g = c.createGain();
+    g.gain.value = accent ? 0.06 : 0.03;
+    const f = c.createBiquadFilter();
+    f.type = 'highpass'; f.frequency.value = 8000;
+    src.connect(f).connect(g).connect(c.destination);
+    src.start(t);
+  }
+
+  function scheduleBar(c, bar, start) {
+    // Bass
+    for (let i = 0; i < 8; i++) {
+      const freq = bassLine[(bar*8+i) % 64];
+      const t = start + i * sp8;
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      const f = c.createBiquadFilter();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      f.type = 'lowpass'; f.frequency.value = 350; f.Q.value = 4;
+      g.gain.setValueAtTime(0.14, t);
+      g.gain.exponentialRampToValueAtTime(0.01, t + sp8*0.85);
+      osc.connect(f).connect(g).connect(c.destination);
+      osc.start(t); osc.stop(t + sp8);
+    }
+
+    // Arp (16 sixteenth notes)
+    for (let i = 0; i < 16; i++) {
+      const freq = arpNotes[(bar*16+i) % 128];
+      const t = start + i * (sp8/2);
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0.025, t);
+      g.gain.exponentialRampToValueAtTime(0.003, t + sp8*0.4);
+      osc.connect(g).connect(c.destination);
+      osc.start(t); osc.stop(t + sp8*0.5);
+    }
+
+    // Lead (4 quarter notes per bar)
+    for (let i = 0; i < 4; i++) {
+      const idx = (bar*4+i) % leadMelody.length;
+      const [freq, dur8] = leadMelody[idx];
+      const t = start + i * spb;
+      const dur = dur8 * sp8;
+
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      const f = c.createBiquadFilter();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(2800, t);
+      f.frequency.exponentialRampToValueAtTime(900, t+dur);
+      f.Q.value = 2;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.17, t+0.02);
+      g.gain.setValueAtTime(0.17, t+dur-0.04);
+      g.gain.linearRampToValueAtTime(0, t+dur);
+      osc.connect(f).connect(g).connect(c.destination);
+      osc.start(t); osc.stop(t+dur+0.01);
+
+      // Detuned layer
+      const o2 = c.createOscillator();
+      const g2 = c.createGain();
+      o2.type = 'sawtooth';
+      o2.frequency.value = freq * 1.004;
+      g2.gain.setValueAtTime(0, t);
+      g2.gain.linearRampToValueAtTime(0.07, t+0.02);
+      g2.gain.linearRampToValueAtTime(0, t+dur);
+      o2.connect(g2).connect(c.destination);
+      o2.start(t); o2.stop(t+dur+0.01);
+
+      // Sub
+      const o3 = c.createOscillator();
+      const g3 = c.createGain();
+      o3.type = 'sine';
+      o3.frequency.value = freq/2;
+      g3.gain.setValueAtTime(0, t);
+      g3.gain.linearRampToValueAtTime(0.05, t+0.03);
+      g3.gain.linearRampToValueAtTime(0, t+dur);
+      o3.connect(g3).connect(c.destination);
+      o3.start(t); o3.stop(t+dur+0.01);
+    }
+
+    // Drums
+    playKick(c, start);
+    playKick(c, start + 2*spb);
+    playSnare(c, start + spb);
+    playSnare(c, start + 3*spb);
+    for (let i = 0; i < 8; i++) playHiHat(c, start + i*sp8, i%2===0);
+  }
+
+  let currentBar = 0;
+
+  function startMusic() {
+    if (musicPlaying) return;
+    musicPlaying = true;
+    document.getElementById('soundBtn').textContent = '🔇 Music';
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    currentBar = 0;
+
+    function loop() {
+      if (!musicPlaying) return;
+      scheduleBar(ctx, currentBar, ctx.currentTime + 0.05);
+      currentBar = (currentBar + 1) % 8;
+      musicTimeout = setTimeout(loop, spb * 4 * 1000);
+    }
+    loop();
+  }
+
+  function stopMusic() {
+    musicPlaying = false;
+    document.getElementById('soundBtn').textContent = '🔊 Music';
+    if (musicTimeout) clearTimeout(musicTimeout);
+    musicTimeout = null;
+  }
+
+  document.getElementById('soundBtn').addEventListener('click', () => {
+    if (musicPlaying) stopMusic(); else startMusic();
+  });
+
+  // ============ PIXEL ART (SMOOTH, NO SNOWMAN) ============
+  // 21 wide x 32 tall = 84px x 128px
+  // Lifeguard: continuous flowing silhouette, no indentations
+  const lifeguardPixels = [
+    ".......SSSSS........",
+    "......SSSSSSS.......",
+    ".....SSSSSSSSS......",
+    "....SSSSSSSSSSS.....",
+    "....SSRRRRRRRSS.....",
+    "...SSRRRRRRRRRSS....",
+    "...SSRRRRRRRRRSS....",
+    "....SSRRRRRRRSS.....",
+    "....SSSSSSSSSSS.....",
+    "...SSSSSSSSSSSSS....",
+    "...SSSSSSSSSSSSS....",
+    "....SSSSSSSSSSS.....",
+    "....SSSSSSSSSSS.....",
+    "....SSSSSSSSSSS.....",
+    "...SSSSSSSSSSSSS....",
+    "...SSSSSSSSSSSSS....",
+    "..SSSSSSSSSSSSSSS...",
+    "..SSRRRRRRRRRRRSS...",
+    "..SSRRRRRRRRRRRSS...",
+    "..SSRRRRRRRRRRRSS...",
+    "...SSRRRRRRRRRSS....",
+    "...SSSSSSSSSSSSS....",
+    "...SSSSSSSSSSSSS....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+  ];
+
+  // Driver: V-taper, broad shoulders, smooth taper, open jacket
+  const driverPixels = [
+    "....LLLLLLLLLLL.....",
+    "...LLLLLLLLLLLLL....",
+    "...LLLLLLLLLLLLL....",
+    "..LLLLLLLLLLLLLLL...",
+    "..LLLLTTTTTTTTLLL...",
+    "..LLLLTTTTTTTTLLL...",
+    "..LLLLTTTTTTTTLLL...",
+    "..LLLLTTTTTTTTLLL...",
+    "..LLLLTTTTTTTTLLL...",
+    "...LLLLTTTTTTLLL....",
+    "...LLLLTTTTTTLLL....",
+    "....LLLLTTTTLLL.....",
+    "....LLLLTTTTLLL.....",
+    "....LLLLTTTTLLL.....",
+    "...LLLLDDDDDDLLL....",
+    "...LLLLDDDDDDLLL....",
+    "..LLLLDDDDDDDDLLL...",
+    "..LLDDDDDDDDDDDLL...",
+    "..LLDDDDDDDDDDDLL...",
+    "..LLDDDDDDDDDDDLL...",
+    "...LLDDDDDDDDDLL....",
+    "...SSSSSSSSSSSSS....",
+    "...SSSSSSSSSSSSS....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+    "....SSSSS.SSSSS.....",
+  ];
+
+  const colorMap = {
+    'S': '#f4c78e',
+    'R': '#e63946',
+    'L': '#2d2d2d',
+    'T': '#f0f0f0',
+    'D': '#3a5a8c',
+  };
+
+  function buildPixelArt(container, data) {
+    container.innerHTML = '';
+    const px = document.createElement('div');
+    px.className = 'px';
+    let shadows = [];
+    for (let y = 0; y < data.length; y++) {
+      for (let x = 0; x < data[y].length; x++) {
+        const c = data[y][x];
+        if (c !== '.') {
+          const color = colorMap[c] || '#ff00ff';
+          shadows.push(`${x*4}px ${y*4}px 0 0 ${color}`);
+        }
+      }
+    }
+    px.style.boxShadow = shadows.join(',');
+    container.appendChild(px);
+  }
+
+  buildPixelArt(document.getElementById('lifeguardBody'), lifeguardPixels);
+  buildPixelArt(document.getElementById('driverBody'), driverPixels);
+
+  // ============ INTERACTIONS ============
+
+  function audio() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+
+  function playTone(freq, duration, type='sine', vol=0.3, delay=0) {
+    const c = audio();
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, c.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+    osc.connect(gain).connect(c.destination);
+    osc.start(c.currentTime + delay);
+    osc.stop(c.currentTime + delay + duration);
+  }
+
+  function playWink() {
+    playTone(880,0.06,'sine',0.25);
+    playTone(1320,0.08,'sine',0.15,0.04);
+    playTone(1760,0.05,'sine',0.1,0.08);
+  }
+
+  function playTongue() {
+    playTone(350,0.08,'sawtooth',0.1);
+    playTone(280,0.1,'sawtooth',0.1,0.06);
+    playTone(200,0.15,'triangle',0.15,0.12);
+    playTone(150,0.2,'sine',0.12,0.2);
+  }
+
+  function playShit() {
+    playTone(200,0.15,'square',0.12);
+    playTone(150,0.2,'square',0.15,0.1);
+    playTone(100,0.3,'sawtooth',0.15,0.22);
+    playTone(70,0.4,'sawtooth',0.12,0.38);
+    playTone(50,0.5,'sine',0.1,0.5);
+  }
+
+  function playBack() {
+    playTone(400,0.06,'sine',0.2);
+    playTone(500,0.06,'sine',0.2,0.05);
+    playTone(650,0.06,'sine',0.2,0.1);
+    playTone(800,0.08,'sine',0.25,0.15);
+    playTone(1000,0.12,'sine',0.2,0.22);
+  }
+
+  function spawnParticles(count, color, spread=80) {
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const angle = (Math.PI*2*i)/count + Math.random()*0.5;
+      const dist = 30 + Math.random()*spread;
+      p.style.setProperty('--dx', Math.cos(angle)*dist+'px');
+      p.style.setProperty('--dy', Math.sin(angle)*dist+'px');
+      p.style.left='50%'; p.style.top='50%';
+      p.style.width = p.style.height = (3+Math.random()*5)+'px';
+      p.style.background = color;
+      stage.appendChild(p);
+      setTimeout(() => p.remove(), 800);
+    }
+  }
+
+  function spawnSparkles() {
+    for (let i = 0; i < 12; i++) {
+      const sp = document.createElement('div');
+      sp.className = 'sparkle';
+      const angle = (Math.PI*2*i)/12;
+      const dist = 40 + Math.random()*50;
+      sp.style.setProperty('--dx', Math.cos(angle)*dist+'px');
+      sp.style.setProperty('--dy', Math.sin(angle)*dist+'px');
+      sp.style.left='50%'; sp.style.top='50%';
+      stage.appendChild(sp);
+      setTimeout(() => sp.remove(), 600);
+    }
+  }
+
+  function spawnStinkLines() {
+    for (let i = 0; i < 4; i++) {
+      const line = document.createElement('div');
+      line.className = 'stink-line';
+      line.style.left = (40+Math.random()*40)+'px';
+      line.style.top = (20+Math.random()*20)+'px';
+      line.style.height = (15+Math.random()*15)+'px';
+      line.style.animationDelay = (i*0.2)+'s';
+      stage.appendChild(line);
+      setTimeout(() => line.remove(), 2000);
+    }
+  }
+
+  function shake() {
+    stage.classList.remove('shake');
+    void stage.offsetWidth;
+    stage.classList.add('shake');
+    setTimeout(() => stage.classList.remove('shake'), 500);
+  }
+
+  function updateRing() {
+    if (hoverCount > 0 && hoverCount < 5) {
+      ring.classList.add('visible');
+      ring.style.borderTopColor = s.classList.contains('shit')
+        ? 'rgba(0,229,255,0.7)' : 'rgba(255,217,61,0.6)';
+    } else {
+      ring.classList.remove('visible');
+    }
+  }
+
+  function resetToSmiley() {
+    s.classList.remove('shit','winking','tongue-out');
+    char.classList.remove('shit-mode');
+    s.textContent = '';
+    const hair = document.createElement('div');
+    hair.className = 'hair';
+    for (let i = 0; i < 4; i++) {
+      const strand = document.createElement('div');
+      strand.className = 'strand';
+      hair.appendChild(strand);
+    }
+    const bang = document.createElement('div');
+    bang.className = 'bang';
+    hair.appendChild(bang);
+    const eyeL = document.createElement('div');
+    eyeL.className = 'eye left';
+    const eyeR = document.createElement('div');
+    eyeR.className = 'eye right';
+    const mouth = document.createElement('div');
+    mouth.className = 'mouth';
+    const tongue = document.createElement('div');
+    tongue.className = 'tongue';
+    s.appendChild(hair);
+    s.appendChild(eyeL);
+    s.appendChild(eyeR);
+    s.appendChild(mouth);
+    s.appendChild(tongue);
+    hoverCount = 0;
+    updateRing();
+  }
+
+  function toShit() {
+    s.classList.remove('winking','tongue-out');
+    s.classList.add('shit');
+    char.classList.add('shit-mode');
+    s.textContent = '💩';
+    const tongue = document.createElement('div');
+    tongue.className = 'tongue';
+    s.appendChild(tongue);
+    playShit();
+    shake();
+    spawnParticles(10,'rgba(0,229,255,0.8)',60);
+    spawnStinkLines();
+    updateRing();
+  }
+
+  s.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (clickTimer) clearTimeout(clickTimer);
+    clickTimer = setTimeout(() => {
+      s.classList.add('winking');
+      playWink();
+      spawnParticles(5,'rgba(255,217,61,0.8)',40);
+      setTimeout(() => s.classList.remove('winking'), 400);
+    }, 250);
+  });
+
+  s.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+    s.classList.add('tongue-out');
+    playTongue();
+    spawnParticles(6,'rgba(255,107,129,0.7)',30);
+    setTimeout(() => s.classList.remove('tongue-out'), 800);
+  });
+
+  s.addEventListener('mouseenter', () => {
+    hoverCount++;
+    updateRing();
+    if (s.classList.contains('shit')) {
+      if (hoverCount >= 5) {
+        resetToSmiley();
+        playBack();
+        spawnSparkles();
+        spawnParticles(8,'rgba(255,255,255,0.8)',50);
+      }
+    } else {
+      if (hoverCount >= 5) { toShit(); }
+    }
+  });
+</script>
+
+</body>
+</html>

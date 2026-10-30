@@ -99,11 +99,11 @@ export default class MatterElement extends HTMLElement {
 
     this.addBodyEventListener = event => {
       let webComponent = null
-      if (event && event.detail && (webComponent = event.detail.webComponent)) {
+      if (event && event.detail && (webComponent = event.detail.webComponent) && webComponent.hasAttribute('oid')) {
         // add a reference pointing to the webComponent
         this.worker.postMessage({
           type: 'addBody',
-          oid: webComponent.getAttribute('oid') || '',
+          oid: webComponent.getAttribute('oid'),
           shape: MatterElement.getRectangle(webComponent)
         })
       }
@@ -148,7 +148,7 @@ export default class MatterElement extends HTMLElement {
         let webComponent
         if (webComponentMap.has(key)) {
           webComponent = await webComponentMap.get(key)
-        } else if ((webComponent = yjsBody.uid ? this.querySelector(`[uid="${yjsBody.uid}"]`) : this.querySelector(`[oid="${yjsBody.oid}"]`))) {
+        } else if ((webComponent = yjsBody.uid ? this.querySelector(`[oid="${yjsBody.oid}"]`) : this.querySelector(`[uid="${yjsBody.uid}"]`))) {
           webComponentMap.set(key, Promise.resolve(webComponent))
         } else {
           let resolveWebComponent
