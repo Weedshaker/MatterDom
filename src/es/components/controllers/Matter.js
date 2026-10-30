@@ -148,7 +148,7 @@ export default class MatterElement extends HTMLElement {
         let webComponent
         if (webComponentMap.has(key)) {
           webComponent = await webComponentMap.get(key)
-        } else if ((webComponent = yjsBody.uid ? this.querySelector(`[oid="${yjsBody.oid}"]`) : this.querySelector(`[uid="${yjsBody.uid}"]`))) {
+        } else if ((webComponent = yjsBody.uid ? this.querySelector(`[uid="${yjsBody.uid}"]`) : this.querySelector(`[oid="${yjsBody.oid}"]`))) {
           webComponentMap.set(key, Promise.resolve(webComponent))
         } else {
           let resolveWebComponent
