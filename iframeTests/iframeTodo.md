@@ -3,6 +3,8 @@
   sandbox="allow-scripts"
 ></iframe>
 
+-> Notice that allow-same-origin is deliberately omitted.
+
 body shape is given by something like https://bennettfeely.com/clippy/
 body can contain: iframe, v-webtorrent (extended), color
 
